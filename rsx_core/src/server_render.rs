@@ -1,9 +1,9 @@
+use crate::Render;
 use ::std::convert::From;
 use ::std::fmt::Display;
 use ::std::fmt::Formatter;
 use ::std::fmt::Result;
 use ::std::fmt::Write;
-use crate::Render;
 
 #[derive(Clone, Debug)]
 pub struct ServerRender {
