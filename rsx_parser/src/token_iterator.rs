@@ -6,6 +6,7 @@ use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::iter::Iterator;
 
+#[derive(Clone, Debug)]
 pub struct TokenIterator {
     iter: IntoIter,
     next: Option<TokenTree>,
@@ -63,13 +64,15 @@ impl TokenIterator {
         Ok(())
     }
 
-    pub fn chomp_ident(&mut self, other: &Ident) -> Result<(), ASTError> {
-        if self.is_next_ident(other) {
+    pub fn chomp_ident(&mut self) -> Result<String, ASTError> {
+        if let Some(TokenTree::Ident(ident)) = &self.next {
+            let ident_string = ident.to_string();
             self.chomp()?;
-            Ok(())
-        } else {
-            Err(ASTError::UnexpectedToken)
+
+            return Ok(ident_string);
         }
+
+        Err(ASTError::UnexpectedToken)
     }
 
     pub fn chomp_punct(&mut self, other: &Punct) -> Result<(), ASTError> {

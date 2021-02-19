@@ -2,6 +2,8 @@
 pub enum ASTError {
     UnexpectedInput,
     UnexpectedToken,
+    ExcessNodesFound,
     PeekOnEmptyNonde,
     ChompOnEmptyNonde,
+    MismatchedTagName,
 }

@@ -48,28 +48,3 @@ pub enum Attribute<'a> {
     Pair(&'a str, &'a str),
     Single(&'a str),
 }
-
-#[cfg(test)]
-mod parse {
-    use super::*;
-
-    #[test]
-    fn it_should_return_node_for_self_closing_elements() {
-        let code = quote! {
-          <div/>
-        };
-
-        let nodes = parse(code.into());
-        assert_eq!(nodes.to_string(), "blah");
-    }
-}
-
-// // # Option 2
-// buffer.render(
-//   Node::new("div", &[], &[
-//     &Child::Text("hello"),
-//     &Child::Node(Node::new("h1", &[Attr::new(&"class", &"font-h0")], &[
-//       &Text("Upgrade Today!"),
-//     ]))
-//   ])
-// );

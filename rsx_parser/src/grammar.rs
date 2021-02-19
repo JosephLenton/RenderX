@@ -51,7 +51,13 @@ impl Grammar {
         }
 
         let mut input = TokenIterator::new(stream);
-        self.parse_root(&mut input).and_then(|ast| Ok(Some(ast)))
+        let root = self.parse_root(&mut input).and_then(|ast| Ok(Some(ast)));
+
+        if !input.is_empty() {
+            return Err(ASTError::ExcessNodesFound);
+        }
+
+        root
     }
 
     fn parse_root(&self, input: &mut TokenIterator) -> Result<Root> {
@@ -64,20 +70,37 @@ impl Grammar {
 
     fn parse_node(&self, input: &mut TokenIterator) -> Result<Node> {
         input.chomp_punct(&self.LeftAngle)?;
-        let tag = input.peek().unwrap().to_string();
-        input.chomp()?;
+        let opening_tag = input.chomp_ident()?;
 
-        let mut is_self_closing = false;
+        println!(" >> aaa");
+
         if input.is_next_punct(&self.ForwardSlash) {
             input.chomp_punct(&self.ForwardSlash)?;
             input.chomp_punct(&self.RightAngle)?;
 
-            is_self_closing = true;
+            return Ok(Node {
+                tag: opening_tag,
+                is_self_closing: true,
+            });
+        }
+
+        input.chomp_punct(&self.RightAngle)?;
+
+        // todo Children
+
+        input.chomp_punct(&self.LeftAngle)?;
+        input.chomp_punct(&self.ForwardSlash)?;
+        let closing_tag = input.chomp_ident()?;
+
+        input.chomp_punct(&self.RightAngle)?;
+
+        if closing_tag != opening_tag {
+            return Err(ASTError::MismatchedTagName);
         }
 
         Ok(Node {
-            tag,
-            is_self_closing,
+            tag: opening_tag,
+            is_self_closing: false,
         })
     }
 }
@@ -93,14 +116,41 @@ mod parse {
           <div/>
         };
 
-        let nodes = parse(code.into())?.unwrap();
-        assert_eq!(
-            nodes,
-            Root::Node(Node {
-                tag: "div".to_string(),
-                is_self_closing: true,
-            })
-        );
+        let expected = Root::Node(Node {
+            tag: "div".to_string(),
+            is_self_closing: true,
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_return_node_for_an_empty_tag() -> Result<()> {
+        let code = quote! {
+          <h1></h1>
+        };
+
+        let expected = Root::Node(Node {
+            tag: "h1".to_string(),
+            is_self_closing: false,
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_return_an_error_on_mismatched_closing_node() {
+        let code = quote! {
+          <div></p>
+        };
+
+        let result = parse(code.into());
+        assert_eq!(result, Err(ASTError::MismatchedTagName),);
+    }
+
+    fn assert_eq_nodes(tokens: TokenStream, expected_nodes: Root) -> Result<()> {
+        let nodes = parse(tokens.into())?.unwrap();
+        assert_eq!(nodes, expected_nodes,);
 
         Ok(())
     }
