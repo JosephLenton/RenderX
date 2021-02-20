@@ -83,6 +83,21 @@ impl TokenIterator {
         Err(ASTError::UnexpectedToken)
     }
 
+    pub fn chomp_literal(&mut self) -> Result<String, ASTError> {
+        if let Some(TokenTree::Literal(literal)) = &self.next {
+            let mut literal_string = literal.to_string();
+            if literal_string.starts_with('"') {
+                literal_string = literal_string.as_str()[1..literal_string.len() - 1].to_string();
+            }
+
+            self.chomp()?;
+
+            return Ok(literal_string);
+        }
+
+        Err(ASTError::UnexpectedToken)
+    }
+
     pub fn chomp_punct(&mut self, other: &Punct) -> Result<(), ASTError> {
         if self.is_next_punct(other) {
             self.chomp()?;

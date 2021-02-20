@@ -135,7 +135,7 @@ impl Grammar {
             let key = input.chomp_ident()?;
             let value = if input.is_next_punct(&self.Equals) {
                 input.chomp_punct(&self.Equals)?;
-                Some(input.chomp_ident()?)
+                Some(self.parse_literal(input)?)
             } else {
                 None
             };
@@ -144,6 +144,10 @@ impl Grammar {
         }
 
         Ok(None)
+    }
+
+    fn parse_literal(&self, input: &mut TokenIterator) -> Result<String> {
+        input.chomp_literal()
     }
 }
 
@@ -259,6 +263,42 @@ mod parse {
             attributes: Some(vec![Attribute {
                 key: "is_disabled".to_string(),
                 value: None,
+            }]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_key_value_attributes() -> Result<()> {
+        let code = quote! {
+          <button type="input"></button>
+        };
+
+        let expected = Root::Node(Node {
+            tag: "button".to_string(),
+            is_self_closing: false,
+            attributes: Some(vec![Attribute {
+                key: "type".to_string(),
+                value: Some("input".to_string()),
+            }]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_key_value_attributes_on_self_closing_tags() -> Result<()> {
+        let code = quote! {
+            <button type="input" />
+        };
+
+        let expected = Root::Node(Node {
+            tag: "button".to_string(),
+            is_self_closing: true,
+            attributes: Some(vec![Attribute {
+                key: "type".to_string(),
+                value: Some("input".to_string()),
             }]),
         });
 
