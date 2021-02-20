@@ -14,10 +14,16 @@ pub enum Root {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub struct Attribute {
+    key: String,
+    value: Option<String>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct Node {
     tag: String,
     is_self_closing: bool,
-    // attrs: Vec<ASTAttribute>,
+    attributes: Option<Vec<Attribute>>,
     // children: Vec<ASTChild>,
 }
 
@@ -34,6 +40,7 @@ struct Grammar {
     LeftAngle: Punct,
     RightAngle: Punct,
     ForwardSlash: Punct,
+    Equals: Punct,
 }
 
 impl Grammar {
@@ -42,6 +49,7 @@ impl Grammar {
             LeftAngle: Punct::new('<', Spacing::Alone),
             RightAngle: Punct::new('>', Spacing::Alone),
             ForwardSlash: Punct::new('/', Spacing::Alone),
+            Equals: Punct::new('=', Spacing::Alone),
         }
     }
 
@@ -73,6 +81,9 @@ impl Grammar {
 
         let opening_tag = input.chomp_ident_or("")?;
 
+        // Attributes
+        let attributes = self.parse_attributes(input)?;
+
         if input.is_next_punct(&self.ForwardSlash) {
             input.chomp_punct(&self.ForwardSlash)?;
             input.chomp_punct(&self.RightAngle)?;
@@ -80,6 +91,7 @@ impl Grammar {
             return Ok(Node {
                 tag: opening_tag,
                 is_self_closing: true,
+                attributes,
             });
         }
 
@@ -87,6 +99,7 @@ impl Grammar {
 
         // todo Children
 
+        // Closing Tag.
         input.chomp_punct(&self.LeftAngle)?;
         input.chomp_punct(&self.ForwardSlash)?;
         let closing_tag = input.chomp_ident_or("")?;
@@ -100,7 +113,37 @@ impl Grammar {
         Ok(Node {
             tag: opening_tag,
             is_self_closing: false,
+            attributes,
         })
+    }
+
+    fn parse_attributes(&self, input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>> {
+        let mut maybe_attrs = None;
+
+        while let Some(attribute) = self.parse_attribute(input)? {
+            match maybe_attrs.as_mut() {
+                None => maybe_attrs = Some(vec![attribute]),
+                Some(attrs) => attrs.push(attribute),
+            }
+        }
+
+        Ok(maybe_attrs)
+    }
+
+    fn parse_attribute(&self, input: &mut TokenIterator) -> Result<Option<Attribute>> {
+        if input.is_next_ident() {
+            let key = input.chomp_ident()?;
+            let value = if input.is_next_punct(&self.Equals) {
+                input.chomp_punct(&self.Equals)?;
+                Some(input.chomp_ident()?)
+            } else {
+                None
+            };
+
+            return Ok(Some(Attribute { key, value }));
+        }
+
+        Ok(None)
     }
 }
 
@@ -118,6 +161,7 @@ mod parse {
         let expected = Root::Node(Node {
             tag: "".to_string(),
             is_self_closing: true,
+            attributes: None,
         });
 
         assert_eq_nodes(code, expected)
@@ -132,6 +176,7 @@ mod parse {
         let expected = Root::Node(Node {
             tag: "".to_string(),
             is_self_closing: false,
+            attributes: None,
         });
 
         assert_eq_nodes(code, expected)
@@ -146,6 +191,7 @@ mod parse {
         let expected = Root::Node(Node {
             tag: "div".to_string(),
             is_self_closing: true,
+            attributes: None,
         });
 
         assert_eq_nodes(code, expected)
@@ -160,6 +206,7 @@ mod parse {
         let expected = Root::Node(Node {
             tag: "h1".to_string(),
             is_self_closing: false,
+            attributes: None,
         });
 
         assert_eq_nodes(code, expected)
@@ -180,5 +227,41 @@ mod parse {
         assert_eq!(nodes, expected_nodes,);
 
         Ok(())
+    }
+
+    #[test]
+    fn it_should_parse_lone_attributes() -> Result<()> {
+        let code = quote! {
+          <button is_disabled></button>
+        };
+
+        let expected = Root::Node(Node {
+            tag: "button".to_string(),
+            is_self_closing: false,
+            attributes: Some(vec![Attribute {
+                key: "is_disabled".to_string(),
+                value: None,
+            }]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_lone_attributes_on_self_closing_tags() -> Result<()> {
+        let code = quote! {
+          <button is_disabled />
+        };
+
+        let expected = Root::Node(Node {
+            tag: "button".to_string(),
+            is_self_closing: true,
+            attributes: Some(vec![Attribute {
+                key: "is_disabled".to_string(),
+                value: None,
+            }]),
+        });
+
+        assert_eq_nodes(code, expected)
     }
 }
