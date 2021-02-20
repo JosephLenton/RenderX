@@ -6,7 +6,7 @@ use ::proc_macro2::Punct;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::iter::Iterator;
-use ::std::mem::swap;
+use ::std::mem::replace;
 
 #[derive(Clone, Debug)]
 pub struct TokenIterator {
@@ -69,9 +69,7 @@ impl TokenIterator {
             return Err(ASTError::ChompOnEmptyNonde);
         }
 
-        let mut last = self.iter.next();
-        swap(&mut self.next, &mut last);
-
+        let last = replace(&mut self.next, self.iter.next());
         Ok(last.unwrap())
     }
 
