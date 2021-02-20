@@ -160,10 +160,6 @@ impl Grammar {
             input.chomp_literal()
         }
     }
-
-    fn parse_literal(&self, input: &mut TokenIterator) -> Result<String> {
-        input.chomp_literal()
-    }
 }
 
 #[cfg(test)]
