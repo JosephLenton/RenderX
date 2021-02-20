@@ -1,10 +1,12 @@
 use crate::ASTError;
 use ::proc_macro2::token_stream::IntoIter;
+use ::proc_macro2::Delimiter;
 use ::proc_macro2::Ident;
 use ::proc_macro2::Punct;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::iter::Iterator;
+use ::std::mem::swap;
 
 #[derive(Clone, Debug)]
 pub struct TokenIterator {
@@ -61,15 +63,16 @@ impl TokenIterator {
 
     /// Moves forward one item.
     ///
-    /// Note that when this is empty, you can still continue
-    /// to chomp on tokens. Forever.
-    pub fn chomp(&mut self) -> Result<(), ASTError> {
+    /// Panics if called when there is no next item.
+    pub fn chomp(&mut self) -> Result<TokenTree, ASTError> {
         if self.next.is_none() {
             return Err(ASTError::ChompOnEmptyNonde);
         }
 
-        self.next = self.iter.next();
-        Ok(())
+        let mut last = self.iter.next();
+        swap(&mut self.next, &mut last);
+
+        Ok(last.unwrap())
     }
 
     pub fn chomp_ident(&mut self) -> Result<String, ASTError> {
@@ -105,5 +108,38 @@ impl TokenIterator {
         } else {
             Err(ASTError::UnexpectedToken)
         }
+    }
+
+    pub fn is_brace_group(&mut self) -> bool {
+        self.is_group(Delimiter::Brace)
+    }
+
+    pub fn is_group(&mut self, delimiter: Delimiter) -> bool {
+        if let Some(TokenTree::Group(group)) = &self.next {
+            return group.delimiter() == delimiter;
+        }
+
+        false
+    }
+
+    pub fn chomp_brace_group(&mut self) -> Result<String, ASTError> {
+        self.chomp_group(Delimiter::Brace)
+    }
+
+    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String, ASTError> {
+        if let TokenTree::Group(group) = self.chomp()? {
+            if group.delimiter() == delimiter {
+                let mut group_string = group.to_string();
+                if group_string.starts_with('{') {
+                    group_string = group_string.as_str()[1..group_string.len() - 1]
+                        .trim()
+                        .to_string();
+                }
+
+                return Ok(group_string);
+            }
+        }
+
+        Err(ASTError::UnexpectedToken)
     }
 }

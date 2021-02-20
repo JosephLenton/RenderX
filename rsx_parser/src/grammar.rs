@@ -5,6 +5,8 @@ use ::proc_macro2::Punct;
 use ::proc_macro2::Spacing;
 use ::proc_macro2::Span;
 use ::proc_macro2::TokenStream;
+use ::proc_macro2::TokenTree;
+use ::std::fmt::Write;
 
 pub type Result<N> = ::std::result::Result<N, ASTError>;
 
@@ -37,6 +39,8 @@ pub fn parse(stream: TokenStream) -> Result<Option<Root>> {
 }
 
 struct Grammar {
+    LeftBrace: Punct,
+    RightBrace: Punct,
     LeftAngle: Punct,
     RightAngle: Punct,
     ForwardSlash: Punct,
@@ -46,6 +50,8 @@ struct Grammar {
 impl Grammar {
     pub fn new() -> Self {
         Self {
+            LeftBrace: Punct::new('{', Spacing::Alone),
+            RightBrace: Punct::new('}', Spacing::Alone),
             LeftAngle: Punct::new('<', Spacing::Alone),
             RightAngle: Punct::new('>', Spacing::Alone),
             ForwardSlash: Punct::new('/', Spacing::Alone),
@@ -62,6 +68,7 @@ impl Grammar {
         let root = self.parse_root(&mut input).and_then(|ast| Ok(Some(ast)));
 
         if !input.is_empty() {
+            eprintln!("{:#?}", input);
             return Err(ASTError::ExcessNodesFound);
         }
 
@@ -135,7 +142,7 @@ impl Grammar {
             let key = input.chomp_ident()?;
             let value = if input.is_next_punct(&self.Equals) {
                 input.chomp_punct(&self.Equals)?;
-                Some(self.parse_literal(input)?)
+                Some(self.parse_attribute_value(input)?)
             } else {
                 None
             };
@@ -144,6 +151,14 @@ impl Grammar {
         }
 
         Ok(None)
+    }
+
+    fn parse_attribute_value(&self, input: &mut TokenIterator) -> Result<String> {
+        if input.is_brace_group() {
+            input.chomp_brace_group()
+        } else {
+            input.chomp_literal()
+        }
     }
 
     fn parse_literal(&self, input: &mut TokenIterator) -> Result<String> {
@@ -299,6 +314,24 @@ mod parse {
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
                 value: Some("input".to_string()),
+            }]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_key_value_code_attributes() -> Result<()> {
+        let code = quote! {
+            <button type={base_class.child("el")} />
+        };
+
+        let expected = Root::Node(Node {
+            tag: "button".to_string(),
+            is_self_closing: true,
+            attributes: Some(vec![Attribute {
+                key: "type".to_string(),
+                value: Some("base_class . child (\"el\")".to_string()),
             }]),
         });
 
