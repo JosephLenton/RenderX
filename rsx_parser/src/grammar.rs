@@ -70,9 +70,8 @@ impl Grammar {
 
     fn parse_node(&self, input: &mut TokenIterator) -> Result<Node> {
         input.chomp_punct(&self.LeftAngle)?;
-        let opening_tag = input.chomp_ident()?;
 
-        println!(" >> aaa");
+        let opening_tag = input.chomp_ident_or("")?;
 
         if input.is_next_punct(&self.ForwardSlash) {
             input.chomp_punct(&self.ForwardSlash)?;
@@ -90,7 +89,7 @@ impl Grammar {
 
         input.chomp_punct(&self.LeftAngle)?;
         input.chomp_punct(&self.ForwardSlash)?;
-        let closing_tag = input.chomp_ident()?;
+        let closing_tag = input.chomp_ident_or("")?;
 
         input.chomp_punct(&self.RightAngle)?;
 
@@ -109,6 +108,34 @@ impl Grammar {
 mod parse {
     use super::*;
     use ::quote::quote;
+
+    #[test]
+    fn it_should_capture_self_closing_blank_nodes() -> Result<()> {
+        let code = quote! {
+          </>
+        };
+
+        let expected = Root::Node(Node {
+            tag: "".to_string(),
+            is_self_closing: true,
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_capture_blank_nodes() -> Result<()> {
+        let code = quote! {
+            <></>
+        };
+
+        let expected = Root::Node(Node {
+            tag: "".to_string(),
+            is_self_closing: false,
+        });
+
+        assert_eq_nodes(code, expected)
+    }
 
     #[test]
     fn it_should_return_node_for_self_closing_tag() -> Result<()> {

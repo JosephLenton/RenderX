@@ -30,12 +30,20 @@ impl TokenIterator {
         self.next.as_ref()
     }
 
-    pub fn is_next_ident(&self, other: &Ident) -> bool {
-        if let Some(TokenTree::Ident(ident)) = self.maybe_peek() {
-            return ident == other;
+    pub fn is_next_ident(&self) -> bool {
+        if let Some(TokenTree::Ident(_)) = self.maybe_peek() {
+            return true;
         }
 
         false
+    }
+
+    pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String, ASTError> {
+        if let Some(TokenTree::Ident(ident)) = &self.next {
+            self.chomp_ident()
+        } else {
+            Ok(alt.to_string())
+        }
     }
 
     pub fn is_next_punct(&self, other: &Punct) -> bool {
