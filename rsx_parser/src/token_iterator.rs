@@ -1,4 +1,6 @@
 use crate::ASTError;
+use ::lookahead::lookahead;
+use ::lookahead::Lookahead;
 use ::proc_macro2::token_stream::IntoIter;
 use ::proc_macro2::Delimiter;
 use ::proc_macro2::Ident;
@@ -10,30 +12,40 @@ use ::std::mem::replace;
 
 #[derive(Clone, Debug)]
 pub struct TokenIterator {
-    iter: IntoIter,
-    next: Option<TokenTree>,
+    iter: Lookahead<IntoIter>,
 }
 
 impl TokenIterator {
     pub fn new(stream: TokenStream) -> Self {
-        let mut iter = stream.into_iter();
-        let next = iter.next();
-
-        Self { iter, next }
+        Self {
+            iter: lookahead(stream.into_iter()),
+        }
     }
 
     /// Returns the next token, if there is one.
     /// It returns None if there are no more tokens.
-    pub fn peek(&self) -> Result<&TokenTree, ASTError> {
-        self.maybe_peek().ok_or(ASTError::PeekOnEmptyNonde)
+    pub fn peek_or_error(&mut self) -> Result<&TokenTree, ASTError> {
+        self.peek().ok_or(ASTError::PeekOnEmptyNode)
     }
 
-    pub fn maybe_peek(&self) -> Option<&TokenTree> {
-        self.next.as_ref()
+    pub fn peek(&mut self) -> Option<&TokenTree> {
+        self.iter.lookahead(0)
     }
 
-    pub fn is_next_ident(&self) -> bool {
-        if let Some(TokenTree::Ident(_)) = self.maybe_peek() {
+    pub fn lookahead(&mut self, index: usize) -> Option<&TokenTree> {
+        self.iter.lookahead(index)
+    }
+
+    pub fn lookahead_punct(&mut self, other: &Punct, index: usize) -> bool {
+        if let Some(TokenTree::Punct(punct)) = self.lookahead(index) {
+            return punct.as_char() == other.as_char() && punct.spacing() == other.spacing();
+        }
+
+        false
+    }
+
+    pub fn is_next_ident(&mut self) -> bool {
+        if let Some(TokenTree::Ident(_)) = self.peek() {
             return true;
         }
 
@@ -41,40 +53,35 @@ impl TokenIterator {
     }
 
     pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String, ASTError> {
-        if let Some(TokenTree::Ident(ident)) = &self.next {
+        if let Some(TokenTree::Ident(_)) = self.peek() {
             self.chomp_ident()
         } else {
             Ok(alt.to_string())
         }
     }
 
-    pub fn is_next_punct(&self, other: &Punct) -> bool {
-        if let Some(TokenTree::Punct(punct)) = self.maybe_peek() {
-            return punct.as_char() == other.as_char() && punct.spacing() == other.spacing();
-        }
-
-        false
+    pub fn is_next_punct(&mut self, other: &Punct) -> bool {
+        self.lookahead_punct(other, 0)
     }
 
     /// Returns true if empty.
-    pub fn is_empty(&self) -> bool {
-        self.next.is_none()
+    pub fn is_empty(&mut self) -> bool {
+        self.peek().is_none()
     }
 
     /// Moves forward one item.
     ///
     /// Panics if called when there is no next item.
     pub fn chomp(&mut self) -> Result<TokenTree, ASTError> {
-        if self.next.is_none() {
-            return Err(ASTError::ChompOnEmptyNonde);
+        if self.is_empty() {
+            return Err(ASTError::ChompOnEmptyNode);
         }
 
-        let last = replace(&mut self.next, self.iter.next());
-        Ok(last.unwrap())
+        Ok(self.iter.next().unwrap())
     }
 
     pub fn chomp_ident(&mut self) -> Result<String, ASTError> {
-        if let Some(TokenTree::Ident(ident)) = &self.next {
+        if let Some(TokenTree::Ident(ident)) = self.peek() {
             let ident_string = ident.to_string();
             self.chomp()?;
 
@@ -85,7 +92,7 @@ impl TokenIterator {
     }
 
     pub fn chomp_literal(&mut self) -> Result<String, ASTError> {
-        if let Some(TokenTree::Literal(literal)) = &self.next {
+        if let Some(TokenTree::Literal(literal)) = self.peek() {
             let mut literal_string = literal.to_string();
             if literal_string.starts_with('"') {
                 literal_string = literal_string.as_str()[1..literal_string.len() - 1].to_string();
@@ -113,7 +120,7 @@ impl TokenIterator {
     }
 
     pub fn is_group(&mut self, delimiter: Delimiter) -> bool {
-        if let Some(TokenTree::Group(group)) = &self.next {
+        if let Some(TokenTree::Group(group)) = self.peek() {
             return group.delimiter() == delimiter;
         }
 
