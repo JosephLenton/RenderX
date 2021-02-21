@@ -150,7 +150,7 @@ impl Grammar {
             let key = input.chomp_ident()?;
             let value = if input.is_next_punct(&self.equals) {
                 input.chomp_punct(&self.equals)?;
-                Some(self.parse_literal(input)?)
+                Some(self.parse_attribute_value(input)?)
             } else {
                 None
             };
@@ -161,7 +161,7 @@ impl Grammar {
         Ok(None)
     }
 
-    fn parse_literal(&self, input: &mut TokenIterator) -> Result<Literal> {
+    fn parse_attribute_value(&self, input: &mut TokenIterator) -> Result<Literal> {
         if input.is_brace_group() {
             Ok(Literal::Code(input.chomp_brace_group()?))
         } else {
@@ -183,7 +183,7 @@ impl Grammar {
             if input.is_next_punct(&self.left_angle) {
                 node = Node::Tag(self.parse_tag(input)?);
             } else {
-                node = Node::Literal(self.parse_literal(input)?);
+                node = Node::Literal(self.parse_child_literal(input)?);
             }
 
             match maybe_children.as_mut() {
@@ -191,6 +191,46 @@ impl Grammar {
                 None => maybe_children = Some(vec![node]),
             }
         }
+    }
+
+    fn parse_child_literal(&self, input: &mut TokenIterator) -> Result<Literal> {
+        if input.is_brace_group() {
+            return Ok(Literal::Code(input.chomp_brace_group()?));
+        }
+
+        let mut text = String::new();
+        let mut add_space = false;
+        while !input.is_brace_group() && !input.is_next_punct(&self.left_angle) {
+            match input.chomp()? {
+                TokenTree::Ident(ident) => {
+                    if text.len() > 0 {
+                        write!(text, " ");
+                    }
+
+                    write!(text, "{}", ident);
+                }
+                TokenTree::Punct(punct) => {
+                    write!(text, "{}", punct);
+                }
+                TokenTree::Literal(literal) => {
+                    if text.len() > 0 {
+                        write!(text, " ");
+                    }
+
+                    let literal_string = literal.to_string();
+                    if literal_string.starts_with('"') {
+                        let literal_substring =
+                            &literal_string.as_str()[1..literal_string.len() - 1];
+                        write!(text, "{}", literal_substring);
+                    } else {
+                        write!(text, "{}", literal_string);
+                    }
+                }
+                TokenTree::Group(group) => unimplemented!(),
+            }
+        }
+
+        Ok(Literal::Text(text))
     }
 }
 
