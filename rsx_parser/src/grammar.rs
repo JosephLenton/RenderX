@@ -13,14 +13,19 @@ pub type Result<N> = ::std::result::Result<N, ASTError>;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Node {
     Tag(Tag),
+    Literal(Literal),
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum Literal {
+    Text(String),
     Code(String),
-    Literal(String),
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Attribute {
     key: String,
-    value: Option<String>,
+    value: Option<Literal>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -145,7 +150,7 @@ impl Grammar {
             let key = input.chomp_ident()?;
             let value = if input.is_next_punct(&self.equals) {
                 input.chomp_punct(&self.equals)?;
-                Some(self.parse_attribute_value(input)?)
+                Some(self.parse_literal(input)?)
             } else {
                 None
             };
@@ -156,11 +161,11 @@ impl Grammar {
         Ok(None)
     }
 
-    fn parse_attribute_value(&self, input: &mut TokenIterator) -> Result<String> {
+    fn parse_literal(&self, input: &mut TokenIterator) -> Result<Literal> {
         if input.is_brace_group() {
-            input.chomp_brace_group()
+            Ok(Literal::Code(input.chomp_brace_group()?))
         } else {
-            input.chomp_literal()
+            Ok(Literal::Text(input.chomp_literal()?))
         }
     }
 
@@ -175,13 +180,11 @@ impl Grammar {
             }
 
             let node;
-            if input.is_brace_group() {
-                node = Node::Code(input.chomp_brace_group()?);
-            } else if input.is_next_punct(&self.left_angle) {
+            if input.is_next_punct(&self.left_angle) {
                 node = Node::Tag(self.parse_tag(input)?);
             } else {
-                return Err(ASTError::UnexpectedInput);
-            };
+                node = Node::Literal(self.parse_literal(input)?);
+            }
 
             match maybe_children.as_mut() {
                 Some(children) => children.push(node),
@@ -326,7 +329,7 @@ mod parse {
             is_self_closing: false,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some("input".to_string()),
+                value: Some(Literal::Text("input".to_string())),
             }]),
             children: None,
         });
@@ -345,7 +348,7 @@ mod parse {
             is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some("input".to_string()),
+                value: Some(Literal::Text("input".to_string())),
             }]),
             children: None,
         });
@@ -364,7 +367,7 @@ mod parse {
             is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some("base_class . child (\"el\")".to_string()),
+                value: Some(Literal::Code("base_class . child (\"el\")".to_string())),
             }]),
             children: None,
         });
@@ -459,9 +462,49 @@ mod parse {
             tag: "div".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Node::Code(
+            children: Some(vec![Node::Literal(Literal::Code(
                 "if foo { & \"blah\" } else { & \"foobar\" }".to_string(),
-            )]),
+            ))]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_text_in_a_node() -> Result<()> {
+        let code = quote! {
+            <h1>
+                Upgrade today!
+            </h1>
+        };
+
+        let expected = Node::Tag(Tag {
+            tag: "h1".to_string(),
+            is_self_closing: false,
+            attributes: None,
+            children: Some(vec![Node::Literal(Literal::Text(
+                "Upgrade today!".to_string(),
+            ))]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_text_with_quotes_in_a_node() -> Result<()> {
+        let code = quote! {
+            <h1>
+                "Upgrade today!"
+            </h1>
+        };
+
+        let expected = Node::Tag(Tag {
+            tag: "h1".to_string(),
+            is_self_closing: false,
+            attributes: None,
+            children: Some(vec![Node::Literal(Literal::Text(
+                "Upgrade today!".to_string(),
+            ))]),
         });
 
         assert_eq_nodes(code, expected)
