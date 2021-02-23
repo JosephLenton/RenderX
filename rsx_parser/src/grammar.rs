@@ -10,6 +10,12 @@ use ::std::fmt::Write;
 
 pub type Result<N> = ::std::result::Result<N, ASTError>;
 
+const LEFT_PARENTHESIS: char = '(';
+const LEFT_ANGLE: char = '<';
+const RIGHT_ANGLE: char = '>';
+const FORWARD_SLASH: char = '/';
+const EQUALS: char = '=';
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum Node {
     Tag(Tag),
@@ -45,25 +51,11 @@ pub fn parse(stream: TokenStream) -> Result<Option<Node>> {
     grammar.parse(stream)
 }
 
-struct Grammar {
-    left_brace: Punct,
-    right_brace: Punct,
-    left_angle: Punct,
-    right_angle: Punct,
-    forward_slash: Punct,
-    equals: Punct,
-}
+struct Grammar {}
 
 impl Grammar {
     pub fn new() -> Self {
-        Self {
-            left_brace: Punct::new('{', Spacing::Alone),
-            right_brace: Punct::new('}', Spacing::Alone),
-            left_angle: Punct::new('<', Spacing::Alone),
-            right_angle: Punct::new('>', Spacing::Alone),
-            forward_slash: Punct::new('/', Spacing::Alone),
-            equals: Punct::new('=', Spacing::Alone),
-        }
+        Self {}
     }
 
     pub fn parse(&self, stream: TokenStream) -> Result<Option<Node>> {
@@ -82,7 +74,7 @@ impl Grammar {
     }
 
     fn parse_node(&self, input: &mut TokenIterator) -> Result<Node> {
-        if input.is_next_punct(&self.left_angle) {
+        if input.is_next_punct(LEFT_ANGLE) {
             self.parse_tag(input).and_then(|tag| Ok(Node::Tag(tag)))
         } else {
             Err(ASTError::UnexpectedInput)
@@ -90,16 +82,16 @@ impl Grammar {
     }
 
     fn parse_tag(&self, input: &mut TokenIterator) -> Result<Tag> {
-        input.chomp_punct(&self.left_angle)?;
+        input.chomp_punct(LEFT_ANGLE)?;
 
         let opening_tag = input.chomp_ident_or("")?;
 
         // Attributes
         let attributes = self.parse_attributes(input)?;
 
-        if input.is_next_punct(&self.forward_slash) {
-            input.chomp_punct(&self.forward_slash)?;
-            input.chomp_punct(&self.right_angle)?;
+        if input.is_next_punct(FORWARD_SLASH) {
+            input.chomp_punct(FORWARD_SLASH)?;
+            input.chomp_punct(RIGHT_ANGLE)?;
 
             return Ok(Tag {
                 tag: opening_tag,
@@ -109,16 +101,16 @@ impl Grammar {
             });
         }
 
-        input.chomp_punct(&self.right_angle)?;
+        input.chomp_punct(RIGHT_ANGLE)?;
 
         let children = self.parse_children(input)?;
 
         // Closing Tag.
-        input.chomp_punct(&self.left_angle)?;
-        input.chomp_punct(&self.forward_slash)?;
+        input.chomp_punct(LEFT_ANGLE)?;
+        input.chomp_punct(FORWARD_SLASH)?;
         let closing_tag = input.chomp_ident_or("")?;
 
-        input.chomp_punct(&self.right_angle)?;
+        input.chomp_punct(RIGHT_ANGLE)?;
 
         if closing_tag != opening_tag {
             return Err(ASTError::MismatchedTagName);
@@ -148,8 +140,8 @@ impl Grammar {
     fn parse_attribute(&self, input: &mut TokenIterator) -> Result<Option<Attribute>> {
         if input.is_next_ident() {
             let key = input.chomp_ident()?;
-            let value = if input.is_next_punct(&self.equals) {
-                input.chomp_punct(&self.equals)?;
+            let value = if input.is_next_punct(EQUALS) {
+                input.chomp_punct(EQUALS)?;
                 Some(self.parse_attribute_value(input)?)
             } else {
                 None
@@ -173,14 +165,12 @@ impl Grammar {
         let mut maybe_children = None;
 
         loop {
-            if input.is_next_punct(&self.left_angle)
-                && input.lookahead_punct(&self.forward_slash, 1)
-            {
+            if input.is_next_punct(LEFT_ANGLE) && input.lookahead_punct(FORWARD_SLASH, 1) {
                 return Ok(maybe_children);
             }
 
             let node;
-            if input.is_next_punct(&self.left_angle) {
+            if input.is_next_punct(LEFT_ANGLE) {
                 node = Node::Tag(self.parse_tag(input)?);
             } else {
                 node = Node::Literal(self.parse_child_literal(input)?);
@@ -199,24 +189,27 @@ impl Grammar {
         }
 
         let mut text = String::new();
-        let mut add_space = false;
-        while !input.is_brace_group() && !input.is_next_punct(&self.left_angle) {
-            match input.chomp()? {
-                TokenTree::Ident(ident) => {
-                    if text.len() > 0 {
-                        write!(text, " ");
-                    }
+        let mut last_spacing_rules = (false, false);
+        while !input.is_brace_group() && !input.is_next_punct(LEFT_ANGLE) {
+            let next = input.chomp()?;
 
+            let next_spacing_rules = spacing_rules(&next);
+            match (last_spacing_rules, next_spacing_rules) {
+                ((_, true), (true, _)) => {
+                    write!(text, " ");
+                }
+                _ => {}
+            }
+            last_spacing_rules = next_spacing_rules;
+
+            match next {
+                TokenTree::Ident(ident) => {
                     write!(text, "{}", ident);
                 }
                 TokenTree::Punct(punct) => {
                     write!(text, "{}", punct);
                 }
                 TokenTree::Literal(literal) => {
-                    if text.len() > 0 {
-                        write!(text, " ");
-                    }
-
                     let literal_string = literal.to_string();
                     if literal_string.starts_with('"') {
                         let literal_substring =
@@ -226,11 +219,42 @@ impl Grammar {
                         write!(text, "{}", literal_string);
                     }
                 }
-                TokenTree::Group(group) => unimplemented!(),
+                TokenTree::Group(_) => unreachable!(),
             }
         }
 
         Ok(Literal::Text(text))
+    }
+}
+
+fn spacing_rules(tree: &TokenTree) -> (bool, bool) {
+    match tree {
+        TokenTree::Ident(_) => (true, true),
+        TokenTree::Literal(_) => (true, true),
+        TokenTree::Group(_) => (true, true),
+        TokenTree::Punct(punct) => char_spacing_rules(punct.as_char()),
+    }
+}
+
+fn char_spacing_rules(c: char) -> (bool, bool) {
+    match c {
+        '.' => (false, true),
+        ',' => (false, true),
+        ';' => (false, true),
+        ':' => (false, true),
+        '?' => (false, true),
+        '!' => (false, true),
+        '%' => (false, true),
+        ')' => (false, true),
+        ']' => (false, true),
+        '>' => (false, true),
+        '}' => (false, true),
+        '(' => (true, false),
+        '[' => (true, false),
+        '{' => (true, false),
+        '<' => (true, false),
+        '-' => (false, false),
+        _ => (true, true),
     }
 }
 
@@ -524,6 +548,47 @@ mod parse {
             attributes: None,
             children: Some(vec![Node::Literal(Literal::Text(
                 "Upgrade today!".to_string(),
+            ))]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_text_and_bracket_in_a_node() -> Result<()> {
+        let code = quote! {
+            <h1>
+                (Upgrade today!)
+            </h1>
+        };
+
+        let expected = Node::Tag(Tag {
+            tag: "h1".to_string(),
+            is_self_closing: false,
+            attributes: None,
+            children: Some(vec![Node::Literal(Literal::Text(
+                "(Upgrade today!)".to_string(),
+            ))]),
+        });
+
+        assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_parse_text_and_bracket_in_a_node_complex_example() -> Result<()> {
+        let code = quote! {
+            <h1>
+                You should (Upgrade (to something new) today! + = 5 (maybe)) if you want to
+            </h1>
+        };
+
+        let expected = Node::Tag(Tag {
+            tag: "h1".to_string(),
+            is_self_closing: false,
+            attributes: None,
+            children: Some(vec![Node::Literal(Literal::Text(
+                "You should (Upgrade (to something new) today! + = 5 (maybe)) if you want to"
+                    .to_string(),
             ))]),
         });
 

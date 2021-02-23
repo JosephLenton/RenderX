@@ -1,24 +1,27 @@
 use crate::ASTError;
 use ::lookahead::lookahead;
 use ::lookahead::Lookahead;
-use ::proc_macro2::token_stream::IntoIter;
 use ::proc_macro2::Delimiter;
 use ::proc_macro2::Ident;
 use ::proc_macro2::Punct;
+use ::proc_macro2::Spacing;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::iter::Iterator;
 use ::std::mem::replace;
+use ::std::vec::IntoIter;
 
 #[derive(Clone, Debug)]
 pub struct TokenIterator {
-    iter: Lookahead<IntoIter>,
+    iter: Lookahead<IntoIter<TokenTree>>,
 }
 
 impl TokenIterator {
     pub fn new(stream: TokenStream) -> Self {
+        let new_stream = flatten(stream);
+
         Self {
-            iter: lookahead(stream.into_iter()),
+            iter: lookahead(new_stream.into_iter()),
         }
     }
 
@@ -36,9 +39,9 @@ impl TokenIterator {
         self.iter.lookahead(index)
     }
 
-    pub fn lookahead_punct(&mut self, other: &Punct, index: usize) -> bool {
+    pub fn lookahead_punct(&mut self, c: char, index: usize) -> bool {
         if let Some(TokenTree::Punct(punct)) = self.lookahead(index) {
-            return punct.as_char() == other.as_char() && punct.spacing() == other.spacing();
+            return punct.as_char() == c;
         }
 
         false
@@ -60,8 +63,8 @@ impl TokenIterator {
         }
     }
 
-    pub fn is_next_punct(&mut self, other: &Punct) -> bool {
-        self.lookahead_punct(other, 0)
+    pub fn is_next_punct(&mut self, c: char) -> bool {
+        self.lookahead_punct(c, 0)
     }
 
     /// Returns true if empty.
@@ -106,8 +109,8 @@ impl TokenIterator {
         Err(ASTError::UnexpectedToken)
     }
 
-    pub fn chomp_punct(&mut self, other: &Punct) -> Result<(), ASTError> {
-        if self.is_next_punct(other) {
+    pub fn chomp_punct(&mut self, c: char) -> Result<(), ASTError> {
+        if self.is_next_punct(c) {
             self.chomp()?;
             Ok(())
         } else {
@@ -146,5 +149,42 @@ impl TokenIterator {
         }
 
         Err(ASTError::UnexpectedToken)
+    }
+}
+
+fn flatten(stream: TokenStream) -> Vec<TokenTree> {
+    let mut new_stream = vec![];
+    flatten_into(&mut new_stream, stream);
+    new_stream
+}
+
+fn flatten_into(new_stream: &mut Vec<TokenTree>, stream: TokenStream) {
+    for item in stream {
+        match item {
+            TokenTree::Group(group) => {
+                let delimiter = group.delimiter();
+                if delimiter != Delimiter::Brace {
+                    let (opening_char, closing_char) = delimiter_chars(delimiter);
+
+                    new_stream.push(TokenTree::Punct(Punct::new(opening_char, Spacing::Alone)));
+                    flatten_into(new_stream, group.stream());
+                    new_stream.push(TokenTree::Punct(Punct::new(closing_char, Spacing::Alone)));
+
+                    continue;
+                }
+
+                new_stream.push(TokenTree::Group(group));
+            }
+            _ => new_stream.push(item),
+        }
+    }
+}
+
+fn delimiter_chars(delimiter: Delimiter) -> (char, char) {
+    match delimiter {
+        Delimiter::Bracket => ('[', ']'),
+        Delimiter::Parenthesis => ('(', ')'),
+        Delimiter::Brace => ('{', '}'),
+        Delimiter::None => ('\0', '\0'),
     }
 }
