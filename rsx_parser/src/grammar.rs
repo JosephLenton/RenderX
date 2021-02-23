@@ -1,16 +1,10 @@
 use crate::ASTError;
+use crate::Result;
 use crate::TokenIterator;
-use ::proc_macro2::Ident;
-use ::proc_macro2::Punct;
-use ::proc_macro2::Spacing;
-use ::proc_macro2::Span;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;
 
-pub type Result<N> = ::std::result::Result<N, ASTError>;
-
-const LEFT_PARENTHESIS: char = '(';
 const LEFT_ANGLE: char = '<';
 const RIGHT_ANGLE: char = '>';
 const FORWARD_SLASH: char = '/';
@@ -196,7 +190,7 @@ impl Grammar {
             let next_spacing_rules = spacing_rules(&next);
             match (last_spacing_rules, next_spacing_rules) {
                 ((_, true), (true, _)) => {
-                    write!(text, " ");
+                    write!(text, " ")?;
                 }
                 _ => {}
             }
@@ -204,19 +198,19 @@ impl Grammar {
 
             match next {
                 TokenTree::Ident(ident) => {
-                    write!(text, "{}", ident);
+                    write!(text, "{}", ident)?;
                 }
                 TokenTree::Punct(punct) => {
-                    write!(text, "{}", punct);
+                    write!(text, "{}", punct)?;
                 }
                 TokenTree::Literal(literal) => {
                     let literal_string = literal.to_string();
                     if literal_string.starts_with('"') {
                         let literal_substring =
                             &literal_string.as_str()[1..literal_string.len() - 1];
-                        write!(text, "{}", literal_substring);
+                        write!(text, "{}", literal_substring)?;
                     } else {
-                        write!(text, "{}", literal_string);
+                        write!(text, "{}", literal_string)?;
                     }
                 }
                 TokenTree::Group(_) => unreachable!(),

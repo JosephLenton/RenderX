@@ -2,13 +2,11 @@ use crate::ASTError;
 use ::lookahead::lookahead;
 use ::lookahead::Lookahead;
 use ::proc_macro2::Delimiter;
-use ::proc_macro2::Ident;
 use ::proc_macro2::Punct;
 use ::proc_macro2::Spacing;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::iter::Iterator;
-use ::std::mem::replace;
 use ::std::vec::IntoIter;
 
 #[derive(Clone, Debug)]

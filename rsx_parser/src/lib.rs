@@ -7,7 +7,7 @@ mod ast_error;
 mod grammar;
 mod token_iterator;
 
-pub(crate) use self::ast_error::ASTError;
+pub(crate) use self::ast_error::*;
 pub(crate) use self::token_iterator::TokenIterator;
 
 pub static BUFFER_NAME: &'static str = "__";
