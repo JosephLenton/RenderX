@@ -9,8 +9,7 @@ proc-macro = true
 
 [dependencies]
 rsx_parser = {path = "./../rsx_parser"}
+proc-macro2 = "1.0.24"
 
 [dev-dependencies]
 classnames = "2.1.1"
-rsx_core = {path = "./../rsx_core"}
-pretty_assertions = "0.6.1"
