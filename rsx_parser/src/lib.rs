@@ -8,7 +8,7 @@ mod grammar;
 mod token_iterator;
 
 pub(crate) use self::ast_error::*;
-pub(crate) use self::token_iterator::TokenIterator;
+pub(crate) use self::token_iterator::*;
 
 pub static BUFFER_NAME: &'static str = "__";
 
@@ -30,21 +30,20 @@ pub fn parse(old_stream: TokenStream) -> TokenStream {
     quote! {}
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Node<'a> {
-    tag: &'a str,
-    attrs: &'a [Attribute<'a>],
-    children: &'a [Child<'a>],
-}
+// #[derive(Debug)]
+// pub struct Node {
+//     tag: &'static str,
+//     is_self_closing: bool,
+//     attrs: Option<Vec<Attribute>>,
+//     children: Option<Vec<ChildNode>>
+// }
 
-#[derive(Copy, Clone, Debug)]
-pub enum Child<'a> {
-    RawText(&'a str),
-    Node(Node<'a>),
-}
+// #[derive(Debug)]
+// pub enum Child {
+//     StaticText(&'static str),
+// }
 
-#[derive(Copy, Clone, Debug)]
-pub enum Attribute<'a> {
-    Pair(&'a str, &'a str),
-    Single(&'a str),
-}
+// #[derive(Debug)]
+// pub enum Attribute {
+//     key: &'static str
+// }
