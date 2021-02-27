@@ -1,10 +1,13 @@
+use ::proc_macro2::TokenStream;
 use ::std::convert::From;
 use ::std::fmt;
+
+pub type Result<N> = ::std::result::Result<N, Error>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Error {
     EmptyMacroStreamGiven,
-    UnexpectedInput,
+    UnexpectedStartingInput,
     UnexpectedToken,
     ExcessNodesFound,
     PeekOnEmptyNode,
@@ -12,8 +15,6 @@ pub enum Error {
     MismatchedTagName,
     FmtError(fmt::Error),
 }
-
-pub type Result<N> = ::std::result::Result<N, Error>;
 
 impl From<fmt::Error> for Error {
     fn from(err: fmt::Error) -> Self {

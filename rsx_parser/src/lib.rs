@@ -8,10 +8,11 @@ mod grammar;
 mod output;
 
 use crate::error::Result;
+pub use crate::error::*;
 
 pub fn parse(old_stream: TokenStream) -> Result<TokenStream> {
     let stream = TokenStream::from(old_stream);
 
     let ast = grammar::parse(stream)?;
-    output::build(ast)
+    Ok(output::build(ast))
 }

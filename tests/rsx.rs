@@ -1,17 +1,19 @@
 use ::classnames::classname;
 use ::pretty_assertions::assert_eq;
-use ::rsx_core::*;
+use ::rsx_core::render::render;
 use ::rsx_macro::rsx;
 
 #[test]
 pub fn main() {
-    let mut buffer = ServerRender::new();
-    component(&mut buffer);
+    let comp = rsx! {
+      <hr/>
+    };
 
-    assert_eq!("<div>hello</div>", buffer.to_string());
+    let html = render(comp);
+    assert_eq!("<hr/>", html);
 }
 
-fn component<R: Render>(__rsx_buffer__: &mut R) {
+// fn component<R: Render>(__rsx_buffer__: &mut R) {
     // # Example HTML
     // <div>
     //   hello
@@ -44,9 +46,9 @@ fn component<R: Render>(__rsx_buffer__: &mut R) {
     //   ])
     // );
 
-    rsx!(
-      <div>
-        hello
-      </div>
-    )
-}
+//     rsx!(
+//       <div>
+//         hello
+//       </div>
+//     )
+// }
