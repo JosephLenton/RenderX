@@ -1,69 +1,46 @@
-use crate::ASTError;
-use crate::Result;
-use crate::TokenIterator;
+use crate::ast::Attribute;
+use crate::ast::Literal;
+use crate::ast::Node;
+use crate::ast::Tag;
+use crate::error::Error;
+use crate::error::Result;
+
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;
+
+mod token_iterator;
+use self::token_iterator::TokenIterator;
 
 const LEFT_ANGLE: char = '<';
 const RIGHT_ANGLE: char = '>';
 const FORWARD_SLASH: char = '/';
 const EQUALS: char = '=';
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum Node {
-    Tag(Tag),
-    Literal(Literal),
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum Literal {
-    Text(String),
-    Code(String),
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Attribute {
-    key: String,
-    value: Option<Literal>,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Tag {
-    tag: String,
-    is_self_closing: bool,
-    attributes: Option<Vec<Attribute>>,
-    children: Option<Vec<Node>>,
-}
-
-pub fn parse(stream: TokenStream) -> Result<Option<Node>> {
-    if stream.is_empty() {
-        return Ok(None);
-    }
-
+pub fn parse(stream: TokenStream) -> Result<Node> {
     parse_root(stream)
 }
 
-pub fn parse_root(stream: TokenStream) -> Result<Option<Node>> {
+fn parse_root(stream: TokenStream) -> Result<Node> {
     if stream.is_empty() {
-        return Ok(None);
+        return Err(Error::EmptyMacroStreamGiven);
     }
 
     let mut input = TokenIterator::new(stream);
-    let node = parse_node(&mut input).and_then(|ast| Ok(Some(ast)));
+    let node = parse_node(&mut input)?;
 
     if !input.is_empty() {
-        return Err(ASTError::ExcessNodesFound);
+        return Err(Error::ExcessNodesFound);
     }
 
-    node
+    Ok(node)
 }
 
 fn parse_node(input: &mut TokenIterator) -> Result<Node> {
     if input.is_next_punct(LEFT_ANGLE) {
         parse_tag(input).and_then(|tag| Ok(Node::Tag(tag)))
     } else {
-        Err(ASTError::UnexpectedInput)
+        Err(Error::UnexpectedInput)
     }
 }
 
@@ -99,7 +76,7 @@ fn parse_tag(input: &mut TokenIterator) -> Result<Tag> {
     input.chomp_punct(RIGHT_ANGLE)?;
 
     if closing_tag != opening_tag {
-        return Err(ASTError::MismatchedTagName);
+        return Err(Error::MismatchedTagName);
     }
 
     Ok(Tag {
@@ -318,14 +295,7 @@ mod parse {
         };
 
         let result = parse(code.into());
-        assert_eq!(result, Err(ASTError::MismatchedTagName),);
-    }
-
-    fn assert_eq_nodes(tokens: TokenStream, expected_nodes: Node) -> Result<()> {
-        let nodes = parse(tokens.into())?.unwrap();
-        assert_eq!(nodes, expected_nodes,);
-
-        Ok(())
+        assert_eq!(result, Err(Error::MismatchedTagName),);
     }
 
     #[test]
@@ -597,5 +567,12 @@ mod parse {
         });
 
         assert_eq_nodes(code, expected)
+    }
+
+    fn assert_eq_nodes(tokens: TokenStream, expected_nodes: Node) -> Result<()> {
+        let nodes = parse(tokens.into())?;
+        assert_eq!(nodes, expected_nodes,);
+
+        Ok(())
     }
 }

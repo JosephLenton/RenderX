@@ -1,4 +1,4 @@
-use crate::ASTError;
+use crate::error::Error;
 use ::lookahead::lookahead;
 use ::lookahead::Lookahead;
 use ::proc_macro2::Delimiter;
@@ -25,8 +25,8 @@ impl TokenIterator {
 
     /// Returns the next token, if there is one.
     /// It returns None if there are no more tokens.
-    pub fn peek_or_error(&mut self) -> Result<&TokenTree, ASTError> {
-        self.peek().ok_or(ASTError::PeekOnEmptyNode)
+    pub fn peek_or_error(&mut self) -> Result<&TokenTree, Error> {
+        self.peek().ok_or(Error::PeekOnEmptyNode)
     }
 
     pub fn peek(&mut self) -> Option<&TokenTree> {
@@ -53,7 +53,7 @@ impl TokenIterator {
         false
     }
 
-    pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String, ASTError> {
+    pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String, Error> {
         if let Some(TokenTree::Ident(_)) = self.peek() {
             self.chomp_ident()
         } else {
@@ -73,15 +73,15 @@ impl TokenIterator {
     /// Moves forward one item.
     ///
     /// Panics if called when there is no next item.
-    pub fn chomp(&mut self) -> Result<TokenTree, ASTError> {
+    pub fn chomp(&mut self) -> Result<TokenTree, Error> {
         if self.is_empty() {
-            return Err(ASTError::ChompOnEmptyNode);
+            return Err(Error::ChompOnEmptyNode);
         }
 
         Ok(self.iter.next().unwrap())
     }
 
-    pub fn chomp_ident(&mut self) -> Result<String, ASTError> {
+    pub fn chomp_ident(&mut self) -> Result<String, Error> {
         if let Some(TokenTree::Ident(ident)) = self.peek() {
             let ident_string = ident.to_string();
             self.chomp()?;
@@ -89,10 +89,10 @@ impl TokenIterator {
             return Ok(ident_string);
         }
 
-        Err(ASTError::UnexpectedToken)
+        Err(Error::UnexpectedToken)
     }
 
-    pub fn chomp_literal(&mut self) -> Result<String, ASTError> {
+    pub fn chomp_literal(&mut self) -> Result<String, Error> {
         if let Some(TokenTree::Literal(literal)) = self.peek() {
             let mut literal_string = literal.to_string();
             if literal_string.starts_with('"') {
@@ -104,15 +104,15 @@ impl TokenIterator {
             return Ok(literal_string);
         }
 
-        Err(ASTError::UnexpectedToken)
+        Err(Error::UnexpectedToken)
     }
 
-    pub fn chomp_punct(&mut self, c: char) -> Result<(), ASTError> {
+    pub fn chomp_punct(&mut self, c: char) -> Result<(), Error> {
         if self.is_next_punct(c) {
             self.chomp()?;
             Ok(())
         } else {
-            Err(ASTError::UnexpectedToken)
+            Err(Error::UnexpectedToken)
         }
     }
 
@@ -128,11 +128,11 @@ impl TokenIterator {
         false
     }
 
-    pub fn chomp_brace_group(&mut self) -> Result<String, ASTError> {
+    pub fn chomp_brace_group(&mut self) -> Result<String, Error> {
         self.chomp_group(Delimiter::Brace)
     }
 
-    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String, ASTError> {
+    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String, Error> {
         if let TokenTree::Group(group) = self.chomp()? {
             if group.delimiter() == delimiter {
                 let mut group_string = group.to_string();
@@ -146,7 +146,7 @@ impl TokenIterator {
             }
         }
 
-        Err(ASTError::UnexpectedToken)
+        Err(Error::UnexpectedToken)
     }
 }
 

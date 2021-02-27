@@ -3,47 +3,15 @@ use ::quote::format_ident;
 use ::quote::quote;
 
 mod ast;
-mod ast_error;
+mod error;
 mod grammar;
-mod token_iterator;
+mod output;
 
-pub(crate) use self::ast_error::*;
-pub(crate) use self::token_iterator::*;
+use crate::error::Result;
 
-pub static BUFFER_NAME: &'static str = "__";
-
-pub fn parse(old_stream: TokenStream) -> TokenStream {
+pub fn parse(old_stream: TokenStream) -> Result<TokenStream> {
     let stream = TokenStream::from(old_stream);
-    let buffer_name = format_ident!("{}", BUFFER_NAME);
 
-    let ast = grammar::parse(stream);
-
-    // let code = quote! {
-    //   let r = {
-    //     #stream
-    //   };
-
-    //   #buffer_name.render(r);
-    // };
-
-    // stream
-    quote! {}
+    let ast = grammar::parse(stream)?;
+    output::build(ast)
 }
-
-// #[derive(Debug)]
-// pub struct Node {
-//     tag: &'static str,
-//     is_self_closing: bool,
-//     attrs: Option<Vec<Attribute>>,
-//     children: Option<Vec<ChildNode>>
-// }
-
-// #[derive(Debug)]
-// pub enum Child {
-//     StaticText(&'static str),
-// }
-
-// #[derive(Debug)]
-// pub enum Attribute {
-//     key: &'static str
-// }

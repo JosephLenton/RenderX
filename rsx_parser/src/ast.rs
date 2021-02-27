@@ -1,30 +1,25 @@
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct ASTNode {
-    tag: &'static str,
-    is_self_closing: bool,
-    // attrs: Vec<ASTAttribute>,
-    // children: Vec<ASTChild>,
+#[derive(Clone, PartialEq, Debug)]
+pub enum Node {
+    Tag(Tag),
+    Literal(Literal),
 }
 
-impl ASTNode {
-    pub fn new(tag: &'static str, is_self_closing: bool) -> Self {
-        Self {
-            tag,
-            is_self_closing,
-        }
-    }
+#[derive(Clone, PartialEq, Debug)]
+pub enum Literal {
+    Text(String),
+    Code(String),
 }
 
-/*
-#[derive(Copy, Clone, Debug)]
-pub enum ASTChild {
-  RawText(&'a str),
-  Node(Node<'a>)
+#[derive(Clone, PartialEq, Debug)]
+pub struct Tag {
+    pub tag: String,
+    pub is_self_closing: bool,
+    pub attributes: Option<Vec<Attribute>>,
+    pub children: Option<Vec<Node>>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum ASTAttribute<'a> {
-  Pair(&'a str, &'a str),
-  Single(&'a str),
+#[derive(Clone, PartialEq, Debug)]
+pub struct Attribute {
+    pub key: String,
+    pub value: Option<Literal>,
 }
-*/
