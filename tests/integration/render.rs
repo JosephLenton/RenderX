@@ -1,7 +1,7 @@
 use ::classnames::classname;
+use ::core::render::render;
 use ::pretty_assertions::assert_eq;
-use ::rsx_core::render::render;
-use ::rsx_macro::rsx;
+use ::renderx::rsx;
 
 #[test]
 pub fn it_should_render_self_closing_nodes_to_a_string() {

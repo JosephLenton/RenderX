@@ -1,11 +1,11 @@
+use crate::dom::Attribute;
+use crate::dom::Child;
+use crate::dom::Contents;
+use crate::dom::Node;
+use ::std::convert::Into;
 use ::std::fmt::Display;
 use ::std::fmt::Result;
 use ::std::fmt::Write;
-use ::std::convert::Into;
-use crate::dom::Attribute;
-use crate::dom::Child;
-use crate::dom::Node;
-use crate::dom::Contents;
 
 pub fn render(node: Node) -> String {
     let mut render = Render::new();
@@ -15,7 +15,7 @@ pub fn render(node: Node) -> String {
 
 #[derive(Clone, Debug)]
 pub struct Render {
-    buffer : String,
+    buffer: String,
 }
 
 impl Render {
@@ -43,12 +43,12 @@ impl Render {
                 if is_named {
                     write!(self.buffer, "/>")?;
                 }
-            },
+            }
             Contents::Empty => {
                 if is_named {
                     write!(self.buffer, "></{}>", node.name)?;
                 }
-            },
+            }
             Contents::Some(children) => {
                 write!(self.buffer, ">")?;
                 self.render_children(children)?;
@@ -62,14 +62,14 @@ impl Render {
         Ok(())
     }
 
-    fn render_maybe_attributes(&mut self, maybe_attributes : Option<Vec<Attribute>>) -> Result {
+    fn render_maybe_attributes(&mut self, maybe_attributes: Option<Vec<Attribute>>) -> Result {
         match maybe_attributes {
             Some(attributes) => self.render_attributes(attributes),
             None => Ok(()),
         }
     }
 
-    fn render_attributes(&mut self, attributes : Vec<Attribute>) -> Result {
+    fn render_attributes(&mut self, attributes: Vec<Attribute>) -> Result {
         for attribute in attributes {
             write!(self.buffer, " {}", attribute.key)?;
         }
@@ -77,7 +77,7 @@ impl Render {
         Ok(())
     }
 
-    fn render_children(&mut self, children : Vec<Child>) -> Result {
+    fn render_children(&mut self, children: Vec<Child>) -> Result {
         for child in children {
             self.render_child(child)?;
         }
@@ -85,7 +85,7 @@ impl Render {
         Ok(())
     }
 
-    fn render_child(&mut self, child : Child) -> Result {
+    fn render_child(&mut self, child: Child) -> Result {
         match child {
             Child::Text(text) => write!(self.buffer, "{}", text),
             Child::Node(node) => self.render_node(node),

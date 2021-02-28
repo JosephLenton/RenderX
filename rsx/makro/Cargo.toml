@@ -1,13 +1,16 @@
 [package]
-name = "rsx_parser"
+name = "makro"
 version = "0.1.0"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
 edition = "2018"
+publish = false
+
+[lib]
+proc-macro = true
 
 [dependencies]
+parser = {path = "./../parser"}
 proc-macro2 = "1.0.24"
-quote = "1.0.9"
-lookahead = "0.1.0"
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
+classnames = "2.1.1"

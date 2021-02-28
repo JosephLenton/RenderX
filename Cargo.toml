@@ -7,10 +7,9 @@ license = "MIT"
 description = "For rendering HTML in Rust"
 
 [dependencies]
+core = {path = "./rsx/core"}
+makro = {path = "./rsx/makro"}
 
 [dev-dependencies]
-rsx_core = {path = "./rsx_core"}
-rsx_macro = {path = "./rsx_macro"}
 classnames = "2.1.3"
 pretty_assertions = "0.6.1"
-

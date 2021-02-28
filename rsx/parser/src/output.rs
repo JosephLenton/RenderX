@@ -25,7 +25,7 @@ fn visit_node_self_closing(node: Node) -> TokenStream {
     let attributes = visit_optional_attributes(node.attributes);
 
     quote! {
-      ::rsx_core::dom::Node::new_self_closing(#name, #attributes)
+      ::renderx::dom::Node::new_self_closing(#name, #attributes)
     }
 }
 
@@ -35,7 +35,7 @@ fn visit_node_with_children(node: Node) -> TokenStream {
     let children = visit_optional_children(node.children);
 
     quote! {
-      ::rsx_core::dom::Node::new(#name, #attributes, #children)
+      ::renderx::dom::Node::new(#name, #attributes, #children)
     }
 }
 
@@ -96,7 +96,7 @@ fn visit_child(child: Child) -> TokenStream {
     match child {
         Child::Text(text) => {
             quote! {
-              ::rsx_core::dom::Child::Text(#text)
+              ::renderx::dom::Child::Text(#text)
             }
         }
         Child::Code(code) => {
@@ -107,7 +107,7 @@ fn visit_child(child: Child) -> TokenStream {
         Child::Node(node) => {
             let node_tokens = visit_node(node);
             quote! {
-              ::rsx_core::dom::Child::Node(#node_tokens)
+              ::renderx::dom::Child::Node(#node_tokens)
             }
         }
     }
@@ -128,7 +128,7 @@ mod build {
         });
 
         let expected = quote! {
-          ::rsx_core::dom::Node::new_self_closing("hr", None)
+          ::renderx::dom::Node::new_self_closing("hr", None)
         };
 
         assert_eq!(expected.to_string(), code.to_string());
@@ -144,7 +144,7 @@ mod build {
         });
 
         let expected = quote! {
-          ::rsx_core::dom::Node::new("div", None, None)
+          ::renderx::dom::Node::new("div", None, None)
         };
 
         assert_eq!(expected.to_string(), code.to_string());
@@ -160,8 +160,8 @@ mod build {
         });
 
         let expected = quote! {
-          ::rsx_core::dom::Node::new("h1", None, Some(vec![
-            ::rsx_core::dom::Child::Text("hello world!")
+          ::renderx::dom::Node::new("h1", None, Some(vec![
+            ::renderx::dom::Child::Text("hello world!")
           ]))
         };
 
