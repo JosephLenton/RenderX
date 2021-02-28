@@ -1,6 +1,6 @@
 use crate::ast::Attribute;
+use crate::ast::AttributeValue;
 use crate::ast::Child;
-use crate::ast::Literal;
 use crate::ast::Node;
 use crate::error::Error;
 use crate::error::Result;
@@ -44,7 +44,7 @@ fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
             name: "".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(parse_literal(input)?)]),
+            children: Some(vec![parse_child(input)?]),
         })
     }
 }
@@ -110,7 +110,7 @@ fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
         let key = input.chomp_ident()?;
         let value = if input.is_next_punct(EQUALS) {
             input.chomp_punct(EQUALS)?;
-            Some(parse_attribute_literal(input)?)
+            Some(parse_attribute_value(input)?)
         } else {
             None
         };
@@ -121,11 +121,11 @@ fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
     Ok(None)
 }
 
-fn parse_attribute_literal(input: &mut TokenIterator) -> Result<Literal> {
+fn parse_attribute_value(input: &mut TokenIterator) -> Result<AttributeValue> {
     if input.is_brace_group() {
-        Ok(Literal::Code(input.chomp_brace_group()?))
+        Ok(AttributeValue::Code(input.chomp_brace_group()?))
     } else {
-        Ok(Literal::Text(input.chomp_literal()?))
+        Ok(AttributeValue::Text(input.chomp_literal()?))
     }
 }
 
@@ -133,6 +133,10 @@ fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Child>>> {
     let mut maybe_children = None;
 
     loop {
+        if input.is_empty() {
+            return Err(Error::MoreTokensExpected);
+        }
+
         if input.is_next_punct(LEFT_ANGLE) && input.lookahead_punct(FORWARD_SLASH, 1) {
             return Ok(maybe_children);
         }
@@ -149,18 +153,17 @@ fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Child>>> {
 fn parse_child(input: &mut TokenIterator) -> Result<Child> {
     if input.is_next_punct(LEFT_ANGLE) {
         Ok(Child::Node(parse_node(input)?))
+    } else if input.is_brace_group() {
+        Ok(Child::Code(input.chomp_brace_group()?))
     } else {
-        Ok(Child::Literal(parse_literal(input)?))
+        Ok(Child::Text(parse_literal(input)?))
     }
 }
 
-fn parse_literal(input: &mut TokenIterator) -> Result<Literal> {
-    if input.is_brace_group() {
-        return Ok(Literal::Code(input.chomp_brace_group()?));
-    }
-
+fn parse_literal(input: &mut TokenIterator) -> Result<String> {
     let mut text = String::new();
     let mut last_spacing_rules = (false, false);
+
     while !input.is_brace_group() && !input.is_next_punct(LEFT_ANGLE) && !input.is_empty() {
         let next = input.chomp()?;
 
@@ -193,7 +196,7 @@ fn parse_literal(input: &mut TokenIterator) -> Result<Literal> {
         }
     }
 
-    Ok(Literal::Text(text))
+    Ok(text)
 }
 
 fn spacing_rules(tree: &TokenTree) -> (bool, bool) {
@@ -230,6 +233,7 @@ fn char_spacing_rules(c: char) -> (bool, bool) {
 #[cfg(test)]
 mod parse {
     use super::*;
+    use ::pretty_assertions::assert_eq;
     use ::quote::quote;
 
     #[test]
@@ -242,9 +246,7 @@ mod parse {
             name: "".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Text(
-                "blah blah blah".to_string(),
-            ))]),
+            children: Some(vec![Child::Text("blah blah blah".to_string())]),
         };
 
         assert_eq_nodes(code, expected)
@@ -373,7 +375,7 @@ mod parse {
             is_self_closing: false,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some(Literal::Text("input".to_string())),
+                value: Some(AttributeValue::Text("input".to_string())),
             }]),
             children: None,
         };
@@ -392,7 +394,7 @@ mod parse {
             is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some(Literal::Text("input".to_string())),
+                value: Some(AttributeValue::Text("input".to_string())),
             }]),
             children: None,
         };
@@ -411,7 +413,9 @@ mod parse {
             is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some(Literal::Code("base_class . child (\"el\")".to_string())),
+                value: Some(AttributeValue::Code(
+                    "base_class . child (\"el\")".to_string(),
+                )),
             }]),
             children: None,
         };
@@ -506,9 +510,9 @@ mod parse {
             name: "div".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Code(
+            children: Some(vec![Child::Code(
                 "if foo { & \"blah\" } else { & \"foobar\" }".to_string(),
-            ))]),
+            )]),
         };
 
         assert_eq_nodes(code, expected)
@@ -526,9 +530,7 @@ mod parse {
             name: "h1".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Text(
-                "Upgrade today!".to_string(),
-            ))]),
+            children: Some(vec![Child::Text("Upgrade today!".to_string())]),
         };
 
         assert_eq_nodes(code, expected)
@@ -546,9 +548,7 @@ mod parse {
             name: "h1".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Text(
-                "(Upgrade today!)".to_string(),
-            ))]),
+            children: Some(vec![Child::Text("(Upgrade today!)".to_string())]),
         };
 
         assert_eq_nodes(code, expected)
@@ -566,10 +566,10 @@ mod parse {
             name: "h1".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Text(
+            children: Some(vec![Child::Text(
                 "You should (Upgrade (to something new) today! + = 5 (maybe)) if you want to"
                     .to_string(),
-            ))]),
+            )]),
         };
 
         assert_eq_nodes(code, expected)
@@ -587,9 +587,7 @@ mod parse {
             name: "h1".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Text(
-                "Upgrade today!".to_string(),
-            ))]),
+            children: Some(vec![Child::Text("Upgrade today!".to_string())]),
         };
 
         assert_eq_nodes(code, expected)
@@ -605,6 +603,7 @@ mod parse {
     #[cfg(test)]
     mod errors {
         use super::*;
+        use ::pretty_assertions::assert_eq;
         use ::quote::quote;
 
         #[test]

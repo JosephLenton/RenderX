@@ -11,6 +11,7 @@ pub enum Error {
     UnexpectedToken,
     ExcessNodesFound,
     PeekOnEmptyNode,
+    MoreTokensExpected,
     ChompOnEmptyNode,
     MismatchedTagName,
     FmtError(fmt::Error),

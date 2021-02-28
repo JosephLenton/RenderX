@@ -26,6 +26,10 @@ impl Render {
     }
 
     pub fn render(&mut self, node: Node) -> Result {
+        self.render_node(node)
+    }
+
+    fn render_node(&mut self, node: Node) -> Result {
         let is_named = node.is_named();
 
         if is_named {
@@ -33,6 +37,7 @@ impl Render {
         }
 
         self.render_maybe_attributes(node.attributes)?;
+
         match node.contents {
             Contents::SelfClosing => {
                 if is_named {
@@ -45,6 +50,7 @@ impl Render {
                 }
             },
             Contents::Some(children) => {
+                write!(self.buffer, ">")?;
                 self.render_children(children)?;
 
                 if is_named {
@@ -72,7 +78,18 @@ impl Render {
     }
 
     fn render_children(&mut self, children : Vec<Child>) -> Result {
+        for child in children {
+            self.render_child(child)?;
+        }
+
         Ok(())
+    }
+
+    fn render_child(&mut self, child : Child) -> Result {
+        match child {
+            Child::Text(text) => write!(self.buffer, "{}", text),
+            Child::Node(node) => self.render_node(node),
+        }
     }
 }
 

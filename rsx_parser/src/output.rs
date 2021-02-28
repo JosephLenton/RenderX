@@ -3,8 +3,8 @@ use ::quote::format_ident;
 use ::quote::quote;
 
 use crate::ast::Attribute;
+use crate::ast::AttributeValue;
 use crate::ast::Child;
-use crate::ast::Literal;
 use crate::ast::Node;
 use crate::error::Result;
 
@@ -36,12 +36,6 @@ fn visit_node_with_children(node: Node) -> TokenStream {
 
     quote! {
       ::rsx_core::dom::Node::new(#name, #attributes, #children)
-    }
-}
-
-fn visit_literal(literal: Literal) -> TokenStream {
-    quote! {
-      ""
     }
 }
 
@@ -99,14 +93,30 @@ fn visit_children(children: Vec<Child>) -> TokenStream {
 }
 
 fn visit_child(child: Child) -> TokenStream {
-    quote! {
-      None
+    match child {
+        Child::Text(text) => {
+            quote! {
+              ::rsx_core::dom::Child::Text(#text)
+            }
+        }
+        Child::Code(code) => {
+            quote! {
+              #code
+            }
+        }
+        Child::Node(node) => {
+            let node_tokens = visit_node(node);
+            quote! {
+              ::rsx_core::dom::Child::Node(#node_tokens)
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod build {
     use super::*;
+    use ::pretty_assertions::assert_eq;
 
     #[test]
     fn it_should_output_simple_self_closing_nodes() {
@@ -146,12 +156,12 @@ mod build {
             name: "h1".to_string(),
             is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Literal(Literal::Text("yo yo yo".to_string()))]),
+            children: Some(vec![Child::Text("hello world!".to_string())]),
         });
 
         let expected = quote! {
           ::rsx_core::dom::Node::new("h1", None, Some(vec![
-            Child::StaticText("yo yo yo"),
+            ::rsx_core::dom::Child::Text("hello world!")
           ]))
         };
 

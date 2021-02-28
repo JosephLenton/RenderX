@@ -1,4 +1,7 @@
+use crate::dom::Node;
+
 #[derive(Clone, Debug)]
 pub enum Child {
-    StaticText(&'static str),
+    Text(&'static str),
+    Node(Node),
 }

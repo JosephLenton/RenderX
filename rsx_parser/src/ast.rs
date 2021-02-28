@@ -9,11 +9,6 @@ pub struct Node {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Child {
     Node(Node),
-    Literal(Literal),
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum Literal {
     Text(String),
     Code(String),
 }
@@ -21,5 +16,11 @@ pub enum Literal {
 #[derive(Clone, PartialEq, Debug)]
 pub struct Attribute {
     pub key: String,
-    pub value: Option<Literal>,
+    pub value: Option<AttributeValue>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum AttributeValue {
+    Text(String),
+    Code(String),
 }

@@ -4,10 +4,10 @@
 // use ::classnames::classname;
 
 pub fn main() {
-//     let render = ServerRender::new();
-//     modal(render, &"", None);
+    //     let render = ServerRender::new();
+    //     modal(render, &"", None);
 
-//     println!("{}", render);
+    //     println!("{}", render);
 }
 
 // #[component]
