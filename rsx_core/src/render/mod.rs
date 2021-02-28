@@ -41,14 +41,14 @@ impl Render {
             },
             Contents::Empty => {
                 if is_named {
-                    write!(self.buffer, "><{}>", node.name)?;
+                    write!(self.buffer, "></{}>", node.name)?;
                 }
             },
             Contents::Some(children) => {
                 self.render_children(children)?;
 
                 if is_named {
-                    write!(self.buffer, "<{}>", node.name)?;
+                    write!(self.buffer, "</{}>", node.name)?;
                 }
             }
         }

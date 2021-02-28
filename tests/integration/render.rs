@@ -4,13 +4,35 @@ use ::rsx_core::render::render;
 use ::rsx_macro::rsx;
 
 #[test]
-pub fn main() {
+pub fn it_should_render_self_closing_nodes_to_a_string() {
     let comp = rsx! {
       <hr/>
     };
 
     let html = render(comp);
     assert_eq!("<hr/>", html);
+}
+
+#[test]
+pub fn it_should_render_simple_nodes_to_a_string() {
+    let comp = rsx! {
+      <div></div>
+    };
+
+    let html = render(comp);
+    assert_eq!("<div></div>", html);
+}
+
+#[test]
+pub fn it_should_render_simple_nodes_with_unquoted_strings() {
+    let comp = rsx! {
+      <div>
+        hello world!
+      </div>
+    };
+
+    let html = render(comp);
+    assert_eq!("<div>hello world!</div>", html);
 }
 
 // fn component<R: Render>(__rsx_buffer__: &mut R) {
