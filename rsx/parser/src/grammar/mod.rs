@@ -113,10 +113,12 @@ fn parse_comment_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>
 }
 
 fn parse_node_doctype(input: &mut TokenIterator) -> Result<Node> {
-    Ok(Node::Doctype {
-        name: "Doctype".to_string(),
-        attributes: None,
-    })
+    input.chomp_puncts(&[LEFT_ANGLE, EXCLAMATION_MARK])?;
+    let name = input.chomp_ident()?;
+    let attributes = parse_attributes(input)?;
+    input.chomp_punct(RIGHT_ANGLE)?;
+
+    Ok(Node::Doctype { name, attributes })
 }
 
 fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
@@ -317,6 +319,45 @@ mod parse {
     use super::*;
     use ::pretty_assertions::assert_eq;
     use ::quote::quote;
+
+    #[cfg(test)]
+    mod doctype {
+        use super::*;
+
+        #[test]
+        fn it_should_render_doctype_html() -> Result<()> {
+            let code = quote! {
+                <!doctype html>
+            };
+
+            let expected = Node::Doctype {
+                name: "doctype".to_string(),
+                attributes: Some(vec![Attribute {
+                    key: "html".to_string(),
+                    value: None,
+                }]),
+            };
+
+            assert_eq_nodes(code, expected)
+        }
+
+        #[test]
+        fn it_should_preserve_capitalisation() -> Result<()> {
+            let code = quote! {
+                <!DoCtYpE html>
+            };
+
+            let expected = Node::Doctype {
+                name: "DoCtYpE".to_string(),
+                attributes: Some(vec![Attribute {
+                    key: "html".to_string(),
+                    value: None,
+                }]),
+            };
+
+            assert_eq_nodes(code, expected)
+        }
+    }
 
     #[cfg(test)]
     mod comments {

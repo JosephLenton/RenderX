@@ -30,8 +30,10 @@ impl Render {
     fn render_node(&mut self, node: Node) -> Result {
         match node {
             Node::Empty => {}
-            Node::Doctype {} => {
-                unimplemented!();
+            Node::Doctype { name, attributes } => {
+                write!(self.buffer, "<!{}", name)?;
+                self.render_doctype_attributes(attributes)?;
+                write!(self.buffer, ">")?;
             }
             Node::Comment { children } => match children {
                 Some(children) => {
@@ -72,6 +74,23 @@ impl Render {
         }
 
         Ok(())
+    }
+
+    fn render_doctype_attributes(&mut self, maybe_attributes: Option<Vec<Attribute>>) -> Result {
+        match maybe_attributes {
+            Some(attributes) => {
+                for attribute in attributes {
+                    self.render_doctype_attribute(attribute)?;
+                }
+            }
+            None => {}
+        }
+
+        Ok(())
+    }
+
+    fn render_doctype_attribute(&mut self, attribute: Attribute) -> Result {
+        write!(self.buffer, " {}", attribute.key)
     }
 
     fn render_maybe_attributes(&mut self, maybe_attributes: Option<Vec<Attribute>>) -> Result {

@@ -19,13 +19,18 @@ fn visit_node(node: Node) -> TokenStream {
             }
         }
         Node::Doctype { name, attributes } => {
-            unimplemented!();
+            let attribute_tokens = visit_optional_attributes(attributes);
+
             quote! {
-                ::renderx::dom::Node::new_self_closing(&"", None)
+                ::renderx::dom::Node::Doctype {
+                  name: #name,
+                  attributes: #attribute_tokens,
+                }
             }
         }
         Node::Fragment { children } => {
             let children_tokens = visit_children(children);
+
             quote! {
                 ::renderx::dom::Node::Fragment {
                     children: #children_tokens
@@ -34,6 +39,7 @@ fn visit_node(node: Node) -> TokenStream {
         }
         Node::Comment { children } => {
             let children_tokens = visit_optional_children(children);
+
             quote! {
                 ::renderx::dom::Node::Comment {
                     children: #children_tokens
@@ -100,8 +106,10 @@ fn visit_attributes(attributes: Vec<Attribute>) -> TokenStream {
 }
 
 fn visit_attribute(attribute: Attribute) -> TokenStream {
+    let key = attribute.key;
+
     quote! {
-        None
+      ::renderx::dom::Attribute::new(#key)
     }
 }
 

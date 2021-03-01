@@ -4,7 +4,10 @@ use ::std::convert::Into;
 #[derive(Clone, Debug)]
 pub enum Node {
     Empty,
-    Doctype {},
+    Doctype {
+        name: &'static str,
+        attributes: Option<Vec<Attribute>>,
+    },
     Comment {
         children: Option<Vec<Self>>,
     },

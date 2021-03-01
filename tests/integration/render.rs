@@ -3,6 +3,32 @@ use ::core::render::render;
 use ::renderx::rsx;
 
 #[cfg(test)]
+mod doctype {
+    use super::*;
+    use ::pretty_assertions::assert_eq;
+
+    #[test]
+    pub fn it_should_render_doctype_html() {
+        let comp = rsx! {
+          <!doctype html>
+        };
+
+        let html = render(comp);
+        assert_eq!("<!doctype html>", html);
+    }
+
+    #[test]
+    pub fn it_should_preserve_doctype_capitalisation() {
+        let comp = rsx! {
+          <!DoCtYpE html>
+        };
+
+        let html = render(comp);
+        assert_eq!("<!DoCtYpE html>", html);
+    }
+}
+
+#[cfg(test)]
 mod comments {
     use super::*;
     use ::pretty_assertions::assert_eq;
