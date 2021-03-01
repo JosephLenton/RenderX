@@ -11,6 +11,9 @@ use ::std::fmt::Write;
 mod token_iterator;
 use self::token_iterator::TokenIterator;
 
+mod micro_vec;
+use self::micro_vec::MicroVec;
+
 const EXCLAMATION_MARK: char = '!';
 const HYPHEN: char = '-';
 const LEFT_ANGLE: char = '<';
@@ -42,7 +45,18 @@ fn parse_root(stream: TokenStream) -> Result<Node> {
 }
 
 fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
-    parse_node(input)
+    let mut nodes = MicroVec::new();
+
+    while !input.is_empty() {
+        let node = parse_node(input)?;
+        nodes = nodes.push(node);
+    }
+
+    match nodes {
+        MicroVec::None => Err(Error::EmptyMacroStreamGiven),
+        MicroVec::Item(node) => Ok(node),
+        MicroVec::Vec(children) => Ok(Node::Fragment { children }),
+    }
 }
 
 fn parse_node(input: &mut TokenIterator) -> Result<Node> {
@@ -726,13 +740,13 @@ mod parse {
     }
 
     #[cfg(test)]
-    mod errors {
+    mod root_fragments {
         use super::*;
         use ::pretty_assertions::assert_eq;
         use ::quote::quote;
 
         #[test]
-        fn it_should_error_if_content_after_html_in_root() {
+        fn it_should_return_fragment_if_content_after_html_in_root() -> Result<()> {
             let code = quote! {
                 <h1>
                     "Upgrade today!"
@@ -740,12 +754,22 @@ mod parse {
                 blah blah
             };
 
-            let r = parse(code.into());
-            assert_eq!(Err(Error::ExcessNodesFound), r);
+            let expected = Node::Fragment {
+                children: vec![
+                    Node::Open {
+                        name: "h1".to_string(),
+                        attributes: None,
+                        children: Some(vec![Node::Text("Upgrade today!".to_string())]),
+                    },
+                    Node::Text("blah blah".to_string()),
+                ],
+            };
+
+            assert_eq_nodes(code, expected)
         }
 
         #[test]
-        fn it_should_error_if_html_after_content_in_root() {
+        fn it_should_return_fragment_if_html_after_content_in_root() -> Result<()> {
             let code = quote! {
                 blah blah
                 <h1>
@@ -753,8 +777,18 @@ mod parse {
                 </h1>
             };
 
-            let r = parse(code.into());
-            assert_eq!(Err(Error::ExcessNodesFound), r);
+            let expected = Node::Fragment {
+                children: vec![
+                    Node::Text("blah blah".to_string()),
+                    Node::Open {
+                        name: "h1".to_string(),
+                        attributes: None,
+                        children: Some(vec![Node::Text("Upgrade today!".to_string())]),
+                    },
+                ],
+            };
+
+            assert_eq_nodes(code, expected)
         }
     }
 }
