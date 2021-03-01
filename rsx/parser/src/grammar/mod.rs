@@ -19,6 +19,7 @@ const FORWARD_SLASH: char = '/';
 const EQUALS: char = '=';
 
 static COMMENT_CLOSING_LOOKAHEAD: &'static [char] = &[HYPHEN, HYPHEN, RIGHT_ANGLE];
+static TAG_OPENING_LOOKAHEAD: &'static [char] = &[LEFT_ANGLE];
 static TAG_CLOSING_LOOKAHEAD: &'static [char] = &[LEFT_ANGLE, FORWARD_SLASH];
 
 pub fn parse(stream: TokenStream) -> Result<Node> {
@@ -160,7 +161,7 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
 }
 
 fn parse_node_text(input: &mut TokenIterator) -> Result<Node> {
-    Ok(Node::Text(parse_text(input, &TAG_CLOSING_LOOKAHEAD)?))
+    Ok(Node::Text(parse_text(input, &TAG_OPENING_LOOKAHEAD)?))
 }
 
 fn parse_attributes(input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>> {
@@ -379,26 +380,58 @@ mod parse {
         assert_eq_nodes(code, expected)
     }
 
-    #[test]
-    fn it_should_capture_self_closing_blank_nodes() -> Result<()> {
-        let code = quote! {
-          </>
-        };
+    #[cfg(test)]
+    mod fragments {
+        use super::*;
+        #[test]
+        fn it_should_capture_self_closing_blank_nodes() -> Result<()> {
+            let code = quote! {
+                </>
+            };
 
-        let expected = Node::Empty;
+            let expected = Node::Empty;
 
-        assert_eq_nodes(code, expected)
-    }
+            assert_eq_nodes(code, expected)
+        }
 
-    #[test]
-    fn it_should_capture_blank_nodes() -> Result<()> {
-        let code = quote! {
-            <></>
-        };
+        #[test]
+        fn it_should_capture_blank_nodes() -> Result<()> {
+            let code = quote! {
+                <></>
+            };
 
-        let expected = Node::Empty;
+            let expected = Node::Empty;
 
-        assert_eq_nodes(code, expected)
+            assert_eq_nodes(code, expected)
+        }
+
+        #[test]
+        pub fn it_should_render_the_contents_of_fragments() -> Result<()> {
+            let code = quote! {
+              <>
+                <h1>This is a heading</h1>
+                This is some text
+                <hr />
+              </>
+            };
+
+            let expected = Node::Fragment {
+                children: vec![
+                    Node::Open {
+                        name: "h1".to_string(),
+                        attributes: None,
+                        children: Some(vec![Node::Text("This is a heading".to_string())]),
+                    },
+                    Node::Text("This is some text".to_string()),
+                    Node::SelfClosing {
+                        name: "hr".to_string(),
+                        attributes: None,
+                    },
+                ],
+            };
+
+            assert_eq_nodes(code, expected)
+        }
     }
 
     #[test]

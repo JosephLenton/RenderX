@@ -25,9 +25,11 @@ fn visit_node(node: Node) -> TokenStream {
             }
         }
         Node::Fragment { children } => {
-            unimplemented!();
+            let children_tokens = visit_children(children);
             quote! {
-                ::renderx::dom::Node::new_self_closing(&"", None)
+                ::renderx::dom::Node::Fragment {
+                    children: #children_tokens
+                }
             }
         }
         Node::Comment { children } => {
@@ -154,7 +156,7 @@ mod build {
         });
 
         let expected = quote! {
-          ::renderx::dom::Node::new("div", None, None)
+          ::renderx::dom::Node::new_open("div", None, None)
         };
 
         assert_eq!(expected.to_string(), code.to_string());
@@ -169,8 +171,10 @@ mod build {
         });
 
         let expected = quote! {
-          ::renderx::dom::Node::new("h1", None, Some(vec![
-            ::renderx::dom::Node::Text("hello world!")
+          ::renderx::dom::Node::new_open("h1", None, Some(vec![
+            ::renderx::dom::Node::Text {
+              contents: "hello world!",
+            }
           ]))
         };
 
