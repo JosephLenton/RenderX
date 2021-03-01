@@ -8,6 +8,9 @@ pub enum Node {
     Comment {
         children: Option<Vec<Node>>,
     },
+    Fragment {
+        children: Vec<Node>,
+    },
     /// Self closing tags. i.e. <hr />
     SelfClosing {
         name: String,

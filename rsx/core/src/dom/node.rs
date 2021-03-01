@@ -1,19 +1,34 @@
 use crate::dom::Attribute;
-use crate::dom::Child;
 use ::std::convert::Into;
 
 #[derive(Clone, Debug)]
-pub struct Node {
-    pub(crate) name: &'static str,
-    pub(crate) attributes: Option<Vec<Attribute>>,
-    pub(crate) contents: Contents,
+pub enum Node {
+    Empty,
+    Doctype {
+    },
+    Comment {
+        pub(crate) children: Option<Vec<Node>>,
+    },
+    SelfClosing {
+        pub(crate) name: &'static str,
+        pub(crate) attributes: Option<Vec<Attribute>>,
+    },
+    OpenEmpty {
+        pub(crate) name: &'static str,
+        pub(crate) attributes: Option<Vec<Attribute>>,
+    },
+    OpenWithChildren {
+        pub(crate) name: &'static str,
+        pub(crate) attributes: Option<Vec<Attribute>>,
+        pub(crate) contents: Vec<Node>,
+    },
 }
 
 impl Node {
     pub fn new(
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
-        children: Option<Vec<Child>>,
+        children: Option<Vec<Node>>,
     ) -> Self {
         Self {
             name,
@@ -53,16 +68,16 @@ impl Node {
 pub(crate) enum Contents {
     SelfClosing,
     Empty,
-    Some(Vec<Child>),
+    Some(Vec<Node>),
 }
 
-impl Into<Contents> for Vec<Child> {
+impl Into<Contents> for Vec<Node> {
     fn into(self) -> Contents {
         Contents::Some(self)
     }
 }
 
-impl Into<Contents> for Option<Vec<Child>> {
+impl Into<Contents> for Option<Vec<Node>> {
     fn into(self) -> Contents {
         match self {
             Some(children) => children.into(),

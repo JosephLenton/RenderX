@@ -63,16 +63,11 @@ fn parse_node(input: &mut TokenIterator) -> Result<Node> {
 }
 
 fn parse_node_comment(input: &mut TokenIterator) -> Result<Node> {
-    input.chomp_punct(LEFT_ANGLE)?;
-    input.chomp_punct(EXCLAMATION_MARK)?;
-    input.chomp_punct(HYPHEN)?;
-    input.chomp_punct(HYPHEN)?;
+    input.chomp_puncts(&[LEFT_ANGLE, EXCLAMATION_MARK, HYPHEN, HYPHEN])?;
 
     let children = parse_comment_children(input)?;
 
-    input.chomp_punct(HYPHEN)?;
-    input.chomp_punct(HYPHEN)?;
-    input.chomp_punct(RIGHT_ANGLE)?;
+    input.chomp_puncts(&[HYPHEN, HYPHEN, RIGHT_ANGLE])?;
 
     Ok(Node::Comment { children })
 }
@@ -112,14 +107,31 @@ fn parse_node_doctype(input: &mut TokenIterator) -> Result<Node> {
 fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     input.chomp_punct(LEFT_ANGLE)?;
 
-    let opening_tag_name = input.chomp_ident_or("")?;
+    // parses </>
+    if input.lookahead_puncts(&[FORWARD_SLASH, RIGHT_ANGLE]) {
+        input.chomp_puncts(&[FORWARD_SLASH, RIGHT_ANGLE])?;
+        return Ok(Node::Empty);
+    }
 
-    // Attributes
+    // parses <>(... contents)</>
+    if input.is_next_punct(RIGHT_ANGLE) {
+        input.chomp_punct(RIGHT_ANGLE)?;
+        let maybe_children = parse_children(input)?;
+        input.chomp_puncts(&[LEFT_ANGLE, FORWARD_SLASH, RIGHT_ANGLE])?;
+
+        return match maybe_children {
+            Some(children) => Ok(Node::Fragment { children }),
+            None => Ok(Node::Empty),
+        };
+    }
+
+    // Real tags from here on. i.e. <div></div> and <hr />
+    let opening_tag_name = input.chomp_ident()?;
+
     let attributes = parse_attributes(input)?;
 
     if input.is_next_punct(FORWARD_SLASH) {
-        input.chomp_punct(FORWARD_SLASH)?;
-        input.chomp_punct(RIGHT_ANGLE)?;
+        input.chomp_puncts(&[FORWARD_SLASH, RIGHT_ANGLE])?;
 
         return Ok(Node::SelfClosing {
             name: opening_tag_name,
@@ -132,10 +144,8 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     let children = parse_children(input)?;
 
     // Closing Tag.
-    input.chomp_punct(LEFT_ANGLE)?;
-    input.chomp_punct(FORWARD_SLASH)?;
-    let closing_tag_name = input.chomp_ident_or("")?;
-
+    input.chomp_puncts(&[LEFT_ANGLE, FORWARD_SLASH])?;
+    let closing_tag_name = input.chomp_ident()?;
     input.chomp_punct(RIGHT_ANGLE)?;
 
     if closing_tag_name != opening_tag_name {
@@ -375,10 +385,7 @@ mod parse {
           </>
         };
 
-        let expected = Node::SelfClosing {
-            name: "".to_string(),
-            attributes: None,
-        };
+        let expected = Node::Empty;
 
         assert_eq_nodes(code, expected)
     }
@@ -389,11 +396,7 @@ mod parse {
             <></>
         };
 
-        let expected = Node::Open {
-            name: "".to_string(),
-            attributes: None,
-            children: None,
-        };
+        let expected = Node::Empty;
 
         assert_eq_nodes(code, expected)
     }

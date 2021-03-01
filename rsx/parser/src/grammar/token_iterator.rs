@@ -126,6 +126,14 @@ impl TokenIterator {
         }
     }
 
+    pub fn chomp_puncts(&mut self, cs: &[char]) -> Result<(), Error> {
+        for c in cs {
+            self.chomp_punct(*c)?;
+        }
+
+        Ok(())
+    }
+
     pub fn is_brace_group(&mut self) -> bool {
         self.is_group(Delimiter::Brace)
     }

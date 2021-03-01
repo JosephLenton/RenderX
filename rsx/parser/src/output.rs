@@ -24,6 +24,12 @@ fn visit_node(node: Node) -> TokenStream {
               ::renderx::dom::Node::new_self_closing(&"", None)
             }
         }
+        Node::Fragment { children } => {
+            unimplemented!();
+            quote! {
+              ::renderx::dom::Node::new_self_closing(&"", None)
+            }
+        }
         Node::Comment { children } => {
             unimplemented!();
             quote! {
