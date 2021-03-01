@@ -1,6 +1,5 @@
 use crate::ast::Attribute;
 use crate::ast::AttributeValue;
-use crate::ast::Child;
 use crate::ast::Node;
 use crate::error::Error;
 use crate::error::Result;
@@ -12,10 +11,15 @@ use ::std::fmt::Write;
 mod token_iterator;
 use self::token_iterator::TokenIterator;
 
+const EXCLAMATION_MARK: char = '!';
+const HYPHEN: char = '-';
 const LEFT_ANGLE: char = '<';
 const RIGHT_ANGLE: char = '>';
 const FORWARD_SLASH: char = '/';
 const EQUALS: char = '=';
+
+static COMMENT_CLOSING_LOOKAHEAD: &'static [char] = &[HYPHEN, HYPHEN, RIGHT_ANGLE];
+static TAG_CLOSING_LOOKAHEAD: &'static [char] = &[LEFT_ANGLE, FORWARD_SLASH];
 
 pub fn parse(stream: TokenStream) -> Result<Node> {
     parse_root(stream)
@@ -37,19 +41,75 @@ fn parse_root(stream: TokenStream) -> Result<Node> {
 }
 
 fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
-    if input.is_next_punct(LEFT_ANGLE) {
-        parse_node(input)
-    } else {
-        Ok(Node {
-            name: "".to_string(),
-            is_self_closing: false,
-            attributes: None,
-            children: Some(vec![parse_child(input)?]),
-        })
-    }
+    parse_node(input)
 }
 
 fn parse_node(input: &mut TokenIterator) -> Result<Node> {
+    if input.is_next_punct(LEFT_ANGLE) {
+        if input.lookahead_punct(EXCLAMATION_MARK, 1) {
+            if input.lookahead_punct(HYPHEN, 2) {
+                parse_node_comment(input)
+            } else {
+                parse_node_doctype(input)
+            }
+        } else {
+            parse_node_tag(input)
+        }
+    } else if input.is_brace_group() {
+        Ok(Node::Code(input.chomp_brace_group()?))
+    } else {
+        parse_node_text(input)
+    }
+}
+
+fn parse_node_comment(input: &mut TokenIterator) -> Result<Node> {
+    input.chomp_punct(LEFT_ANGLE)?;
+    input.chomp_punct(EXCLAMATION_MARK)?;
+    input.chomp_punct(HYPHEN)?;
+    input.chomp_punct(HYPHEN)?;
+
+    let children = parse_comment_children(input)?;
+
+    input.chomp_punct(HYPHEN)?;
+    input.chomp_punct(HYPHEN)?;
+    input.chomp_punct(RIGHT_ANGLE)?;
+
+    Ok(Node::Comment { children })
+}
+
+fn parse_comment_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>> {
+    let mut maybe_children = None;
+
+    loop {
+        if input.is_empty() {
+            return Err(Error::MoreTokensExpected);
+        }
+
+        if input.lookahead_puncts(&COMMENT_CLOSING_LOOKAHEAD) {
+            return Ok(maybe_children);
+        }
+
+        let child = if input.is_brace_group() {
+            Node::Code(input.chomp_brace_group()?)
+        } else {
+            Node::Text(parse_text(input, &COMMENT_CLOSING_LOOKAHEAD)?)
+        };
+
+        match maybe_children.as_mut() {
+            Some(children) => children.push(child),
+            None => maybe_children = Some(vec![child]),
+        }
+    }
+}
+
+fn parse_node_doctype(input: &mut TokenIterator) -> Result<Node> {
+    Ok(Node::Doctype {
+        name: "Doctype".to_string(),
+        attributes: None,
+    })
+}
+
+fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     input.chomp_punct(LEFT_ANGLE)?;
 
     let opening_tag_name = input.chomp_ident_or("")?;
@@ -61,11 +121,9 @@ fn parse_node(input: &mut TokenIterator) -> Result<Node> {
         input.chomp_punct(FORWARD_SLASH)?;
         input.chomp_punct(RIGHT_ANGLE)?;
 
-        return Ok(Node {
+        return Ok(Node::SelfClosing {
             name: opening_tag_name,
-            is_self_closing: true,
             attributes,
-            children: None,
         });
     }
 
@@ -84,12 +142,15 @@ fn parse_node(input: &mut TokenIterator) -> Result<Node> {
         return Err(Error::MismatchedTagName);
     }
 
-    Ok(Node {
+    Ok(Node::Open {
         name: opening_tag_name,
-        is_self_closing: false,
         attributes,
         children,
     })
+}
+
+fn parse_node_text(input: &mut TokenIterator) -> Result<Node> {
+    Ok(Node::Text(parse_text(input, &TAG_CLOSING_LOOKAHEAD)?))
 }
 
 fn parse_attributes(input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>> {
@@ -129,7 +190,10 @@ fn parse_attribute_value(input: &mut TokenIterator) -> Result<AttributeValue> {
     }
 }
 
-fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Child>>> {
+/// Finds and grabs all child nodes, and then returns them in a Vec.
+/// `stopping_lookaheads` is for telling it what puncts to look for,
+/// to know to stop parsing. For a HTML tag this is `</`, and for a comment this is `-->`.
+fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>> {
     let mut maybe_children = None;
 
     loop {
@@ -137,11 +201,11 @@ fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Child>>> {
             return Err(Error::MoreTokensExpected);
         }
 
-        if input.is_next_punct(LEFT_ANGLE) && input.lookahead_punct(FORWARD_SLASH, 1) {
+        if input.lookahead_puncts(&TAG_CLOSING_LOOKAHEAD) {
             return Ok(maybe_children);
         }
 
-        let child = parse_child(input)?;
+        let child = parse_node(input)?;
 
         match maybe_children.as_mut() {
             Some(children) => children.push(child),
@@ -150,21 +214,14 @@ fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Child>>> {
     }
 }
 
-fn parse_child(input: &mut TokenIterator) -> Result<Child> {
-    if input.is_next_punct(LEFT_ANGLE) {
-        Ok(Child::Node(parse_node(input)?))
-    } else if input.is_brace_group() {
-        Ok(Child::Code(input.chomp_brace_group()?))
-    } else {
-        Ok(Child::Text(parse_literal(input)?))
-    }
-}
-
-fn parse_literal(input: &mut TokenIterator) -> Result<String> {
+fn parse_text(input: &mut TokenIterator, stopping_lookaheads: &[char]) -> Result<String> {
     let mut text = String::new();
     let mut last_spacing_rules = (false, false);
 
-    while !input.is_brace_group() && !input.is_next_punct(LEFT_ANGLE) && !input.is_empty() {
+    while !input.is_brace_group()
+        && !input.is_empty()
+        && !input.lookahead_puncts(stopping_lookaheads)
+    {
         let next = input.chomp()?;
 
         let next_spacing_rules = spacing_rules(&next);
@@ -236,18 +293,78 @@ mod parse {
     use ::pretty_assertions::assert_eq;
     use ::quote::quote;
 
+    #[cfg(test)]
+    mod comments {
+        use super::*;
+
+        #[test]
+        fn it_should_support_empty_comments() -> Result<()> {
+            let code = quote! {
+                <!-- -->
+            };
+
+            let expected = Node::Comment { children: None };
+
+            assert_eq_nodes(code, expected)
+        }
+
+        #[test]
+        fn it_should_support_simple_comments() -> Result<()> {
+            let code = quote! {
+                <!-- this is a comment -->
+            };
+
+            let expected = Node::Comment {
+                children: Some(vec![Node::Text("this is a comment".to_string())]),
+            };
+
+            assert_eq_nodes(code, expected)
+        }
+
+        #[test]
+        fn it_should_parse_tags_like_they_are_text() -> Result<()> {
+            let code = quote! {
+                <!-- this is a <div> </hr> comment -->
+            };
+
+            let expected = Node::Comment {
+                children: Some(vec![Node::Text(
+                    "this is a <div> </ hr> comment".to_string(),
+                )]),
+            };
+
+            assert_eq_nodes(code, expected)
+        }
+
+        #[test]
+        fn it_should_support_code() -> Result<()> {
+            let code = quote! {
+                <!--
+                    this is a <div> </hr> comment
+                    {&"this is some code"}
+                    "this is another string"
+                -->
+            };
+
+            let expected = Node::Comment {
+                children: Some(vec![
+                    Node::Text("this is a <div> </ hr> comment".to_string()),
+                    Node::Code("& \"this is some code\"".to_string()),
+                    Node::Text("this is another string".to_string()),
+                ]),
+            };
+
+            assert_eq_nodes(code, expected)
+        }
+    }
+
     #[test]
     fn it_should_support_root_literals() -> Result<()> {
         let code = quote! {
           blah blah blah
         };
 
-        let expected = Node {
-            name: "".to_string(),
-            is_self_closing: false,
-            attributes: None,
-            children: Some(vec![Child::Text("blah blah blah".to_string())]),
-        };
+        let expected = Node::Text("blah blah blah".to_string());
 
         assert_eq_nodes(code, expected)
     }
@@ -258,11 +375,9 @@ mod parse {
           </>
         };
 
-        let expected = Node {
+        let expected = Node::SelfClosing {
             name: "".to_string(),
-            is_self_closing: true,
             attributes: None,
-            children: None,
         };
 
         assert_eq_nodes(code, expected)
@@ -274,9 +389,8 @@ mod parse {
             <></>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "".to_string(),
-            is_self_closing: false,
             attributes: None,
             children: None,
         };
@@ -290,11 +404,9 @@ mod parse {
           <div/>
         };
 
-        let expected = Node {
+        let expected = Node::SelfClosing {
             name: "div".to_string(),
-            is_self_closing: true,
             attributes: None,
-            children: None,
         };
 
         assert_eq_nodes(code, expected)
@@ -306,9 +418,8 @@ mod parse {
           <h1></h1>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "h1".to_string(),
-            is_self_closing: false,
             attributes: None,
             children: None,
         };
@@ -332,9 +443,8 @@ mod parse {
           <button is_disabled></button>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "button".to_string(),
-            is_self_closing: false,
             attributes: Some(vec![Attribute {
                 key: "is_disabled".to_string(),
                 value: None,
@@ -351,14 +461,12 @@ mod parse {
           <button is_disabled />
         };
 
-        let expected = Node {
+        let expected = Node::SelfClosing {
             name: "button".to_string(),
-            is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "is_disabled".to_string(),
                 value: None,
             }]),
-            children: None,
         };
 
         assert_eq_nodes(code, expected)
@@ -370,9 +478,8 @@ mod parse {
           <button type="input"></button>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "button".to_string(),
-            is_self_closing: false,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
                 value: Some(AttributeValue::Text("input".to_string())),
@@ -389,14 +496,12 @@ mod parse {
             <button type="input" />
         };
 
-        let expected = Node {
+        let expected = Node::SelfClosing {
             name: "button".to_string(),
-            is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
                 value: Some(AttributeValue::Text("input".to_string())),
             }]),
-            children: None,
         };
 
         assert_eq_nodes(code, expected)
@@ -408,16 +513,14 @@ mod parse {
             <button type={base_class.child("el")} />
         };
 
-        let expected = Node {
+        let expected = Node::SelfClosing {
             name: "button".to_string(),
-            is_self_closing: true,
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
                 value: Some(AttributeValue::Code(
                     "base_class . child (\"el\")".to_string(),
                 )),
             }]),
-            children: None,
         };
 
         assert_eq_nodes(code, expected)
@@ -431,16 +534,13 @@ mod parse {
             </div>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "div".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Node(Node {
+            children: Some(vec![Node::SelfClosing {
                 name: "h1".to_string(),
-                is_self_closing: true,
                 attributes: None,
-                children: None,
-            })]),
+            }]),
         };
 
         assert_eq_nodes(code, expected)
@@ -458,34 +558,28 @@ mod parse {
             </div>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "div".to_string(),
-            is_self_closing: false,
             attributes: None,
             children: Some(vec![
-                Child::Node(Node {
+                Node::Open {
                     name: "h1".to_string(),
-                    is_self_closing: false,
                     attributes: None,
                     children: None,
-                }),
-                Child::Node(Node {
+                },
+                Node::Open {
                     name: "span".to_string(),
-                    is_self_closing: false,
                     attributes: None,
-                    children: Some(vec![Child::Node(Node {
+                    children: Some(vec![Node::Open {
                         name: "div".to_string(),
-                        is_self_closing: false,
                         attributes: None,
                         children: None,
-                    })]),
-                }),
-                Child::Node(Node {
+                    }]),
+                },
+                Node::SelfClosing {
                     name: "article".to_string(),
-                    is_self_closing: true,
                     attributes: None,
-                    children: None,
-                }),
+                },
             ]),
         };
 
@@ -506,11 +600,10 @@ mod parse {
             </div>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "div".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Code(
+            children: Some(vec![Node::Code(
                 "if foo { & \"blah\" } else { & \"foobar\" }".to_string(),
             )]),
         };
@@ -526,11 +619,10 @@ mod parse {
             </h1>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "h1".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Text("Upgrade today!".to_string())]),
+            children: Some(vec![Node::Text("Upgrade today!".to_string())]),
         };
 
         assert_eq_nodes(code, expected)
@@ -544,11 +636,10 @@ mod parse {
             </h1>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "h1".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Text("(Upgrade today!)".to_string())]),
+            children: Some(vec![Node::Text("(Upgrade today!)".to_string())]),
         };
 
         assert_eq_nodes(code, expected)
@@ -562,11 +653,10 @@ mod parse {
             </h1>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "h1".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Text(
+            children: Some(vec![Node::Text(
                 "You should (Upgrade (to something new) today! + = 5 (maybe)) if you want to"
                     .to_string(),
             )]),
@@ -583,11 +673,10 @@ mod parse {
             </h1>
         };
 
-        let expected = Node {
+        let expected = Node::Open {
             name: "h1".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Text("Upgrade today!".to_string())]),
+            children: Some(vec![Node::Text("Upgrade today!".to_string())]),
         };
 
         assert_eq_nodes(code, expected)

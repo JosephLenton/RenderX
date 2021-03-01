@@ -4,7 +4,6 @@ use ::quote::quote;
 
 use crate::ast::Attribute;
 use crate::ast::AttributeValue;
-use crate::ast::Child;
 use crate::ast::Node;
 use crate::error::Result;
 
@@ -13,29 +12,54 @@ pub fn build(ast: Node) -> TokenStream {
 }
 
 fn visit_node(node: Node) -> TokenStream {
-    if node.is_self_closing {
-        visit_node_self_closing(node)
-    } else {
-        visit_node_with_children(node)
-    }
-}
+    match node {
+        Node::Empty => {
+            quote! {
+              ::renderx::dom::Node::new_self_closing(&"", None)
+            }
+        }
+        Node::Doctype { name, attributes } => {
+            unimplemented!();
+            quote! {
+              ::renderx::dom::Node::new_self_closing(&"", None)
+            }
+        }
+        Node::Comment { children } => {
+            unimplemented!();
+            quote! {
+              ::renderx::dom::Node::new_self_closing(&"", None)
+            }
+        }
+        Node::SelfClosing { name, attributes } => {
+            let attribute_tokens = visit_optional_attributes(attributes);
 
-fn visit_node_self_closing(node: Node) -> TokenStream {
-    let name = node.name;
-    let attributes = visit_optional_attributes(node.attributes);
+            quote! {
+              ::renderx::dom::Node::new_self_closing(#name, #attribute_tokens)
+            }
+        }
+        Node::Open {
+            name,
+            attributes,
+            children,
+        } => {
+            let attribute_tokens = visit_optional_attributes(attributes);
+            let children_tokens = visit_optional_children(children);
 
-    quote! {
-      ::renderx::dom::Node::new_self_closing(#name, #attributes)
-    }
-}
-
-fn visit_node_with_children(node: Node) -> TokenStream {
-    let name = node.name;
-    let attributes = visit_optional_attributes(node.attributes);
-    let children = visit_optional_children(node.children);
-
-    quote! {
-      ::renderx::dom::Node::new(#name, #attributes, #children)
+            quote! {
+              ::renderx::dom::Node::new(#name, #attribute_tokens, #children_tokens)
+            }
+        }
+        Node::Text(text) => {
+            quote! {
+              ::renderx::dom::Node::Text(#text)
+            }
+        }
+        Node::Code(code) => {
+            unimplemented!();
+            quote! {
+              #code
+            }
+        }
     }
 }
 
@@ -69,7 +93,7 @@ fn visit_attribute(attribute: Attribute) -> TokenStream {
     }
 }
 
-fn visit_optional_children(maybe_children: Option<Vec<Child>>) -> TokenStream {
+fn visit_optional_children(maybe_children: Option<Vec<Node>>) -> TokenStream {
     match maybe_children {
         None => quote! { None },
         Some(children) => {
@@ -82,34 +106,13 @@ fn visit_optional_children(maybe_children: Option<Vec<Child>>) -> TokenStream {
     }
 }
 
-fn visit_children(children: Vec<Child>) -> TokenStream {
-    let children_tokens: Vec<TokenStream> = children.into_iter().map(|a| visit_child(a)).collect();
+fn visit_children(children: Vec<Node>) -> TokenStream {
+    let children_tokens: Vec<TokenStream> = children.into_iter().map(|a| visit_node(a)).collect();
 
     quote! {
       vec![
         #(#children_tokens),*
       ]
-    }
-}
-
-fn visit_child(child: Child) -> TokenStream {
-    match child {
-        Child::Text(text) => {
-            quote! {
-              ::renderx::dom::Child::Text(#text)
-            }
-        }
-        Child::Code(code) => {
-            quote! {
-              #code
-            }
-        }
-        Child::Node(node) => {
-            let node_tokens = visit_node(node);
-            quote! {
-              ::renderx::dom::Child::Node(#node_tokens)
-            }
-        }
     }
 }
 
@@ -120,11 +123,9 @@ mod build {
 
     #[test]
     fn it_should_output_simple_self_closing_nodes() {
-        let code = build(Node {
+        let code = build(Node::SelfClosing {
             name: "hr".to_string(),
-            is_self_closing: true,
             attributes: None,
-            children: None,
         });
 
         let expected = quote! {
@@ -136,9 +137,8 @@ mod build {
 
     #[test]
     fn it_should_output_simple_open_nodes() {
-        let code = build(Node {
+        let code = build(Node::Open {
             name: "div".to_string(),
-            is_self_closing: false,
             attributes: None,
             children: None,
         });
@@ -152,16 +152,15 @@ mod build {
 
     #[test]
     fn it_should_output_nodes_with_literals() {
-        let code = build(Node {
+        let code = build(Node::Open {
             name: "h1".to_string(),
-            is_self_closing: false,
             attributes: None,
-            children: Some(vec![Child::Text("hello world!".to_string())]),
+            children: Some(vec![Node::Text("hello world!".to_string())]),
         });
 
         let expected = quote! {
           ::renderx::dom::Node::new("h1", None, Some(vec![
-            ::renderx::dom::Child::Text("hello world!")
+            ::renderx::dom::Node::Text("hello world!")
           ]))
         };
 

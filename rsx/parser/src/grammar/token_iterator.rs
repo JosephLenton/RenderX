@@ -33,6 +33,16 @@ impl TokenIterator {
         self.iter.lookahead(0)
     }
 
+    pub fn lookahead_puncts(&mut self, cs: &[char]) -> bool {
+        for (i, c) in cs.iter().enumerate() {
+            if !self.lookahead_punct(*c, i) {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub fn lookahead(&mut self, index: usize) -> Option<&TokenTree> {
         self.iter.lookahead(index)
     }
@@ -184,5 +194,34 @@ fn delimiter_chars(delimiter: Delimiter) -> (char, char) {
         Delimiter::Parenthesis => ('(', ')'),
         Delimiter::Brace => ('{', '}'),
         Delimiter::None => ('\0', '\0'),
+    }
+}
+
+#[cfg(test)]
+mod lookahead_puncts {
+    use super::*;
+    use ::quote::quote;
+
+    #[test]
+    fn it_should_return_true_if_puncts_ahead() {
+        let tokens = quote! {
+            + + = +
+        };
+
+        let mut input = TokenIterator::new(tokens);
+        assert!(input.lookahead_puncts(&['+']));
+        assert!(input.lookahead_puncts(&['+', '+']));
+        assert!(input.lookahead_puncts(&['+', '+', '=']));
+        assert!(input.lookahead_puncts(&['+', '+', '=', '+']));
+    }
+
+    #[test]
+    fn it_should_return_false_if_lookahead_overflows() {
+        let tokens = quote! {
+            + + = +
+        };
+
+        let mut input = TokenIterator::new(tokens);
+        assert_eq!(false, input.lookahead_puncts(&['+', '+', '=', '+', '+']));
     }
 }

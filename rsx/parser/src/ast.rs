@@ -1,9 +1,26 @@
 #[derive(Clone, PartialEq, Debug)]
-pub struct Node {
-    pub name: String,
-    pub is_self_closing: bool,
-    pub attributes: Option<Vec<Attribute>>,
-    pub children: Option<Vec<Child>>,
+pub enum Node {
+    Empty,
+    Doctype {
+        name: String,
+        attributes: Option<Vec<Attribute>>,
+    },
+    Comment {
+        children: Option<Vec<Node>>,
+    },
+    /// Self closing tags. i.e. <hr />
+    SelfClosing {
+        name: String,
+        attributes: Option<Vec<Attribute>>,
+    },
+    /// Tags that have children. i.e. <div></div>
+    Open {
+        name: String,
+        attributes: Option<Vec<Attribute>>,
+        children: Option<Vec<Node>>,
+    },
+    Text(String),
+    Code(String),
 }
 
 #[derive(Clone, PartialEq, Debug)]
