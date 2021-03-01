@@ -15,32 +15,34 @@ fn visit_node(node: Node) -> TokenStream {
     match node {
         Node::Empty => {
             quote! {
-              ::renderx::dom::Node::new_self_closing(&"", None)
+              ::renderx::dom::Node::Empty
             }
         }
         Node::Doctype { name, attributes } => {
             unimplemented!();
             quote! {
-              ::renderx::dom::Node::new_self_closing(&"", None)
+                ::renderx::dom::Node::new_self_closing(&"", None)
             }
         }
         Node::Fragment { children } => {
             unimplemented!();
             quote! {
-              ::renderx::dom::Node::new_self_closing(&"", None)
+                ::renderx::dom::Node::new_self_closing(&"", None)
             }
         }
         Node::Comment { children } => {
-            unimplemented!();
+            let children_tokens = visit_optional_children(children);
             quote! {
-              ::renderx::dom::Node::new_self_closing(&"", None)
+                ::renderx::dom::Node::Comment {
+                    children: #children_tokens
+                }
             }
         }
         Node::SelfClosing { name, attributes } => {
             let attribute_tokens = visit_optional_attributes(attributes);
 
             quote! {
-              ::renderx::dom::Node::new_self_closing(#name, #attribute_tokens)
+                ::renderx::dom::Node::new_self_closing(#name, #attribute_tokens)
             }
         }
         Node::Open {
@@ -52,18 +54,20 @@ fn visit_node(node: Node) -> TokenStream {
             let children_tokens = visit_optional_children(children);
 
             quote! {
-              ::renderx::dom::Node::new(#name, #attribute_tokens, #children_tokens)
+                ::renderx::dom::Node::new_open(#name, #attribute_tokens, #children_tokens)
             }
         }
         Node::Text(text) => {
             quote! {
-              ::renderx::dom::Node::Text(#text)
+                ::renderx::dom::Node::Text {
+                    contents: #text,
+                }
             }
         }
         Node::Code(code) => {
             unimplemented!();
             quote! {
-              #code
+                #code
             }
         }
     }
@@ -76,7 +80,7 @@ fn visit_optional_attributes(maybe_attributes: Option<Vec<Attribute>>) -> TokenS
             let tokens = visit_attributes(attributes);
 
             quote! {
-              Some(#tokens)
+                Some(#tokens)
             }
         }
     }
@@ -87,15 +91,15 @@ fn visit_attributes(attributes: Vec<Attribute>) -> TokenStream {
         attributes.into_iter().map(|a| visit_attribute(a)).collect();
 
     quote! {
-      vec![
-        #(#attribute_tokens),*
-      ]
+        vec![
+            #(#attribute_tokens),*
+        ]
     }
 }
 
 fn visit_attribute(attribute: Attribute) -> TokenStream {
     quote! {
-      None
+        None
     }
 }
 
@@ -106,7 +110,7 @@ fn visit_optional_children(maybe_children: Option<Vec<Node>>) -> TokenStream {
             let tokens = visit_children(children);
 
             quote! {
-              Some(#tokens)
+                Some(#tokens)
             }
         }
     }
@@ -116,9 +120,9 @@ fn visit_children(children: Vec<Node>) -> TokenStream {
     let children_tokens: Vec<TokenStream> = children.into_iter().map(|a| visit_node(a)).collect();
 
     quote! {
-      vec![
-        #(#children_tokens),*
-      ]
+        vec![
+            #(#children_tokens),*
+        ]
     }
 }
 

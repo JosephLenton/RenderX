@@ -1,6 +1,4 @@
 use crate::dom::Attribute;
-use crate::dom::Child;
-use crate::dom::Contents;
 use crate::dom::Node;
 use ::std::convert::Into;
 use ::std::fmt::Display;
@@ -30,33 +28,47 @@ impl Render {
     }
 
     fn render_node(&mut self, node: Node) -> Result {
-        let is_named = node.is_named();
-
-        if is_named {
-            write!(self.buffer, "<{}", node.name)?;
-        }
-
-        self.render_maybe_attributes(node.attributes)?;
-
-        match node.contents {
-            Contents::SelfClosing => {
-                if is_named {
-                    write!(self.buffer, "/>")?;
-                }
+        match node {
+            Node::Empty => {}
+            Node::Doctype {} => {
+                unimplemented!();
             }
-            Contents::Empty => {
-                if is_named {
-                    write!(self.buffer, "></{}>", node.name)?;
+            Node::Comment { children } => match children {
+                Some(children) => {
+                    write!(self.buffer, "<!-- ")?;
+                    self.render_nodes(children)?;
+                    write!(self.buffer, " -->")?;
                 }
+                None => {
+                    write!(self.buffer, "<!-- -->")?;
+                }
+            },
+            Node::Fragment { children } => {
+                self.render_nodes(children)?;
             }
-            Contents::Some(children) => {
+            Node::SelfClosing { name, attributes } => {
+                write!(self.buffer, "<{}", name)?;
+                self.render_maybe_attributes(attributes)?;
+                write!(self.buffer, "/>")?;
+            }
+            Node::OpenEmpty { name, attributes } => {
+                write!(self.buffer, "<{}", name)?;
+                self.render_maybe_attributes(attributes)?;
                 write!(self.buffer, ">")?;
-                self.render_children(children)?;
-
-                if is_named {
-                    write!(self.buffer, "</{}>", node.name)?;
-                }
+                write!(self.buffer, "</{}>", name)?;
             }
+            Node::OpenWithChildren {
+                name,
+                attributes,
+                children,
+            } => {
+                write!(self.buffer, "<{}", name)?;
+                self.render_maybe_attributes(attributes)?;
+                write!(self.buffer, ">")?;
+                self.render_nodes(children)?;
+                write!(self.buffer, "</{}>", name)?;
+            }
+            Node::Text { contents } => write!(self.buffer, "{}", contents)?,
         }
 
         Ok(())
@@ -77,19 +89,19 @@ impl Render {
         Ok(())
     }
 
-    fn render_children(&mut self, children: Vec<Child>) -> Result {
-        for child in children {
-            self.render_child(child)?;
+    fn render_maybe_nodes(&mut self, maybe_nodes: Option<Vec<Node>>) -> Result {
+        match maybe_nodes {
+            Some(nodes) => self.render_nodes(nodes),
+            None => Ok(()),
+        }
+    }
+
+    fn render_nodes(&mut self, nodes: Vec<Node>) -> Result {
+        for node in nodes {
+            self.render_node(node)?;
         }
 
         Ok(())
-    }
-
-    fn render_child(&mut self, child: Child) -> Result {
-        match child {
-            Child::Text(text) => write!(self.buffer, "{}", text),
-            Child::Node(node) => self.render_node(node),
-        }
     }
 }
 
