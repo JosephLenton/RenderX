@@ -13,8 +13,8 @@ impl<T> MicroVec<T> {
         Self::None
     }
 
-    pub fn push(mut self, t: T) -> Self {
-        match self {
+    pub fn push(&mut self, t: T) {
+        *self = match replace(self, Self::None) {
             Self::None => Self::Item(t),
             Self::Item(t0) => Self::Vec(vec![t0, t]),
             Self::Vec(mut ts) => {

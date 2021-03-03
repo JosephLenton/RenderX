@@ -107,15 +107,30 @@ fn visit_attributes(attributes: Vec<Attribute>) -> TokenStream {
 
 fn visit_attribute(attribute: Attribute) -> TokenStream {
     let key = attribute.key;
+    let value = attribute.value;
 
-    quote! {
-      ::renderx::dom::Attribute::new(#key)
+    match value {
+        None => {
+            quote! {
+                ::renderx::dom::Attribute::new(#key, None)
+            }
+        }
+        Some(AttributeValue::Text(text)) => {
+            quote! {
+                ::renderx::dom::Attribute::new(#key, Some(#text))
+            }
+        }
+        Some(AttributeValue::Code(code)) => {
+            quote! {
+                ::renderx::dom::Attribute::new(#key, Some(#code))
+            }
+        }
     }
 }
 
 fn visit_optional_children(maybe_children: Option<Vec<Node>>) -> TokenStream {
     match maybe_children {
-        None => quote! { None },
+        None => quote! { Option::<Vec<::renderx::dom::Node>>::None },
         Some(children) => {
             let tokens = visit_children(children);
 

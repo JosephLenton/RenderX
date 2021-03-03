@@ -1,4 +1,5 @@
 use crate::dom::Attribute;
+use crate::dom::Child;
 use crate::dom::Node;
 use ::std::convert::Into;
 use ::std::fmt::Display;
@@ -62,12 +63,12 @@ impl Render {
             Node::OpenWithChildren {
                 name,
                 attributes,
-                children,
+                child,
             } => {
                 write!(self.buffer, "<{}", name)?;
                 self.render_maybe_attributes(attributes)?;
                 write!(self.buffer, ">")?;
-                self.render_nodes(children)?;
+                self.render_child(child)?;
                 write!(self.buffer, "</{}>", name)?;
             }
             Node::Text { contents } => write!(self.buffer, "{}", contents)?,
@@ -102,7 +103,14 @@ impl Render {
 
     fn render_attributes(&mut self, attributes: Vec<Attribute>) -> Result {
         for attribute in attributes {
-            write!(self.buffer, " {}", attribute.key)?;
+            match attribute.value {
+                Some(text) => {
+                    write!(self.buffer, " {}=\"{}\"", attribute.key, text)?;
+                }
+                None => {
+                    write!(self.buffer, " {}", attribute.key)?;
+                }
+            }
         }
 
         Ok(())
@@ -121,6 +129,24 @@ impl Render {
         }
 
         Ok(())
+    }
+
+    fn render_maybe_child(&mut self, maybe_child: Option<Child>) -> Result {
+        match maybe_child {
+            Some(child) => self.render_child(child),
+            None => Ok(()),
+        }
+    }
+
+    fn render_child(&mut self, child: Child) -> Result {
+        match child {
+            Child::None => Ok(()),
+            Child::Nodes { nodes } => self.render_nodes(nodes),
+            Child::Text { contents } => {
+                write!(self.buffer, "{}", contents)?;
+                Ok(())
+            }
+        }
     }
 }
 

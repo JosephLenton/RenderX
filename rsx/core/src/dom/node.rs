@@ -1,4 +1,6 @@
 use crate::dom::Attribute;
+use crate::dom::Child;
+use crate::dom::ToChild;
 use ::std::convert::Into;
 
 #[derive(Clone, Debug)]
@@ -25,7 +27,7 @@ pub enum Node {
     OpenWithChildren {
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
-        children: Vec<Self>,
+        child: Child,
     },
     Text {
         contents: &'static str,
@@ -33,16 +35,19 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn new_open(
+    pub fn new_open<N>(
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
-        maybe_children: Option<Vec<Self>>,
-    ) -> Self {
-        match maybe_children {
-            Some(children) => Self::OpenWithChildren {
+        maybe_child: Option<N>,
+    ) -> Self
+    where
+        N: ToChild,
+    {
+        match maybe_child {
+            Some(child) => Self::OpenWithChildren {
                 name,
                 attributes,
-                children,
+                child: child.to_child(),
             },
             None => Self::OpenEmpty { name, attributes },
         }

@@ -49,7 +49,7 @@ fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
 
     while !input.is_empty() {
         let node = parse_node(input)?;
-        nodes = nodes.push(node);
+        nodes.push(node);
     }
 
     match nodes {
