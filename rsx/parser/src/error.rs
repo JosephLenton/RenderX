@@ -1,4 +1,3 @@
-use ::proc_macro2::TokenStream;
 use ::std::convert::From;
 use ::std::fmt;
 

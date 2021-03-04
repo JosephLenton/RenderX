@@ -2,7 +2,6 @@ use crate::dom::Attribute;
 use crate::dom::Child;
 use crate::dom::Node;
 use ::std::convert::Into;
-use ::std::fmt::Display;
 use ::std::fmt::Result;
 use ::std::fmt::Write;
 

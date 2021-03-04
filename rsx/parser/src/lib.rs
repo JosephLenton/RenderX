@@ -1,6 +1,4 @@
 use ::proc_macro2::TokenStream;
-use ::quote::format_ident;
-use ::quote::quote;
 
 mod ast;
 mod error;

@@ -5,6 +5,12 @@ pub trait ToChild {
     fn to_child(self) -> Child;
 }
 
+impl ToChild for Child {
+    fn to_child(self) -> Self {
+        self
+    }
+}
+
 impl<N: ToChild> ToChild for Option<N> {
     fn to_child(self) -> Child {
         match self {
@@ -29,13 +35,16 @@ impl ToChild for &'static str {
 impl ToChild for Vec<&'static str> {
     fn to_child(self) -> Child {
         if self.len() == 0 {
-          Child::None
+            Child::None
         } else if self.len() == 1 {
-          Child::Text { contents: self[0] }
+            Child::Text { contents: self[0] }
         } else {
-          Child::Nodes {
-            nodes: self.into_iter().map(|text| Node::Text { contents: text }).collect()
-          }
+            Child::Nodes {
+                nodes: self
+                    .into_iter()
+                    .map(|text| Node::Text { contents: text })
+                    .collect(),
+            }
         }
     }
 }

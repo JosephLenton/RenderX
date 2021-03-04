@@ -23,12 +23,6 @@ impl TokenIterator {
         }
     }
 
-    /// Returns the next token, if there is one.
-    /// It returns None if there are no more tokens.
-    pub fn peek_or_error(&mut self) -> Result<&TokenTree, Error> {
-        self.peek().ok_or(Error::PeekOnEmptyNode)
-    }
-
     pub fn peek(&mut self) -> Option<&TokenTree> {
         self.iter.lookahead(0)
     }
@@ -188,7 +182,7 @@ fn flatten_into(new_stream: &mut Vec<TokenTree>, stream: TokenStream) {
         match item {
             TokenTree::Group(group) => {
                 let delimiter = group.delimiter();
-                if delimiter == Delimiter::Parenthesis {
+                if delimiter != Delimiter::Brace {
                     let (opening_char, closing_char) = delimiter_chars(delimiter);
 
                     new_stream.push(TokenTree::Punct(Punct::new(opening_char, Spacing::Alone)));

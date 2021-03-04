@@ -1,7 +1,6 @@
 use crate::dom::Attribute;
 use crate::dom::Child;
 use crate::dom::ToChild;
-use ::std::convert::Into;
 
 #[derive(Clone, Debug)]
 pub enum Node {
@@ -55,5 +54,38 @@ impl Node {
 
     pub fn new_self_closing(name: &'static str, attributes: Option<Vec<Attribute>>) -> Self {
         Self::SelfClosing { name, attributes }
+    }
+}
+
+#[cfg(test)]
+mod node {
+    use super::*;
+
+    #[test]
+    fn it_should_build_a_node() {
+        let text = "yo";
+
+        let node = crate::dom::Node::new_open(
+            "h1",
+            None,
+            Some(vec![
+                crate::dom::ToNode::to_node("Hello world!"),
+                crate::dom::ToNode::to_node(crate::dom::Node::Text {
+                    contents: "hello world!",
+                }),
+                crate::dom::ToNode::to_node(text),
+            ]),
+        );
+
+        if let Node::OpenWithChildren {
+            name,
+            attributes,
+            child,
+        } = node
+        {
+            assert_eq!(name, "h1");
+        } else {
+            unreachable!();
+        }
     }
 }

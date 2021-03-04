@@ -780,7 +780,6 @@ mod parse {
     #[cfg(test)]
     mod root_fragments {
         use super::*;
-        use ::pretty_assertions::assert_eq;
         use ::quote::quote;
 
         #[test]

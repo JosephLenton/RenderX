@@ -1,11 +1,9 @@
 use ::proc_macro2::TokenStream;
-use ::quote::format_ident;
 use ::quote::quote;
 
 use crate::ast::Attribute;
 use crate::ast::AttributeValue;
 use crate::ast::Node;
-use crate::error::Result;
 
 pub fn build(ast: Node) -> TokenStream {
     visit_node(ast)
@@ -74,7 +72,7 @@ fn visit_node(node: Node) -> TokenStream {
         }
         Node::Code(code) => {
             quote! {
-                #code
+                ::renderx::dom::ToNode::to_node(#code)
             }
         }
     }
@@ -151,7 +149,7 @@ fn visit_children(children: Vec<Node>) -> TokenStream {
 }
 
 #[cfg(test)]
-mod build {
+mod nodes {
     use super::*;
     use ::pretty_assertions::assert_eq;
 
@@ -178,11 +176,17 @@ mod build {
         });
 
         let expected = quote! {
-          ::renderx::dom::Node::new_open("div", None, None)
+          ::renderx::dom::Node::new_open("div", None, Option::<Vec<::renderx::dom::Node>>::None)
         };
 
         assert_eq!(expected.to_string(), code.to_string());
     }
+}
+
+#[cfg(test)]
+mod literals {
+    use super::*;
+    use ::pretty_assertions::assert_eq;
 
     #[test]
     fn it_should_output_nodes_with_literals() {
@@ -228,9 +232,11 @@ mod code {
 
         let expected = quote! {
           ::renderx::dom::Node::new_open("h1", None, Some(vec![
+            ::renderx::dom::ToNode::to_node("Hello world!"),
             ::renderx::dom::Node::Text {
               contents: "hello world!",
-            }
+            },
+            ::renderx::dom::ToNode::to_node(text)
           ]))
         };
 

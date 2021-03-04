@@ -165,16 +165,16 @@ mod code {
 
     #[test]
     fn it_should_render_with_str_variables() {
-        let text = "yay!";
+        let text = " yay!";
         let code = rsx! {
           <h1>
-            {"Hello world"}
-            This is working
+            {"Hello world. "}
+            This is working,
             {text}
           </h1>
         };
 
         let html = render(code);
-        assert_eq!("<h1>Hello</h1>", html);
+        assert_eq!("<h1>Hello world. This is working, yay!</h1>", html);
     }
 }
