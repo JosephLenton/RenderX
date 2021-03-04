@@ -188,7 +188,7 @@ fn flatten_into(new_stream: &mut Vec<TokenTree>, stream: TokenStream) {
         match item {
             TokenTree::Group(group) => {
                 let delimiter = group.delimiter();
-                if delimiter != Delimiter::Brace {
+                if delimiter == Delimiter::Parenthesis {
                     let (opening_char, closing_char) = delimiter_chars(delimiter);
 
                     new_stream.push(TokenTree::Punct(Punct::new(opening_char, Spacing::Alone)));
@@ -211,6 +211,56 @@ fn delimiter_chars(delimiter: Delimiter) -> (char, char) {
         Delimiter::Parenthesis => ('(', ')'),
         Delimiter::Brace => ('{', '}'),
         Delimiter::None => ('\0', '\0'),
+    }
+}
+
+#[cfg(test)]
+mod flatten {
+    use super::*;
+    use ::quote::quote;
+
+    #[test]
+    fn it_should_flatten_parenthesis_groups() {
+        let tokens = quote! {
+            a ( x y z ) c
+        };
+
+        let mut input = TokenIterator::new(tokens);
+        assert!(input.chomp().ok().unwrap().to_string() == "a");
+        assert!(input.chomp().ok().unwrap().to_string() == "(");
+        assert!(input.chomp().ok().unwrap().to_string() == "x");
+        assert!(input.chomp().ok().unwrap().to_string() == "y");
+        assert!(input.chomp().ok().unwrap().to_string() == "z");
+        assert!(input.chomp().ok().unwrap().to_string() == ")");
+        assert!(input.chomp().ok().unwrap().to_string() == "c");
+    }
+
+    #[test]
+    fn it_should_flatten_square_bracket_groups() {
+        let tokens = quote! {
+            a [ x y z ] c
+        };
+
+        let mut input = TokenIterator::new(tokens);
+        assert!(input.chomp().ok().unwrap().to_string() == "a");
+        assert!(input.chomp().ok().unwrap().to_string() == "[");
+        assert!(input.chomp().ok().unwrap().to_string() == "x");
+        assert!(input.chomp().ok().unwrap().to_string() == "y");
+        assert!(input.chomp().ok().unwrap().to_string() == "z");
+        assert!(input.chomp().ok().unwrap().to_string() == "]");
+        assert!(input.chomp().ok().unwrap().to_string() == "c");
+    }
+
+    #[test]
+    fn it_should_not_flatten_brace_groups() {
+        let tokens = quote! {
+            a { x y z } c
+        };
+
+        let mut input = TokenIterator::new(tokens);
+        assert!(input.chomp().ok().unwrap().to_string() == "a");
+        assert!(input.chomp().ok().unwrap().to_string() == "{ x y z }");
+        assert!(input.chomp().ok().unwrap().to_string() == "c");
     }
 }
 
