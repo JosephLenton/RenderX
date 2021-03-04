@@ -146,8 +146,17 @@ impl TokenIterator {
         false
     }
 
-    pub fn chomp_brace_group(&mut self) -> Result<String, Error> {
-        self.chomp_group(Delimiter::Brace)
+    pub fn chomp_brace_group(&mut self) -> Result<TokenStream, Error> {
+        match self.chomp()? {
+            TokenTree::Group(group) => {
+                if group.delimiter() == Delimiter::Brace {
+                    Ok(group.stream())
+                } else {
+                    Err(Error::UnexpectedToken)
+                }
+            }
+            _ => Err(Error::UnexpectedToken),
+        }
     }
 
     pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String, Error> {

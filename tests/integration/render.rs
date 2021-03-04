@@ -139,11 +139,42 @@ mod attributes {
 
     #[test]
     fn it_should_support_key_value_attributes_on_nodes() {
-      let code = rsx! {
-        <input type="text" />
-      };
+        let code = rsx! {
+          <input type="text" />
+        };
 
-      let html = render(code);
-      assert_eq!("<input type=\"text\"/>", html);
+        let html = render(code);
+        assert_eq!("<input type=\"text\"/>", html);
+    }
+}
+
+#[cfg(test)]
+mod code {
+    use super::*;
+    use ::pretty_assertions::assert_eq;
+
+    #[test]
+    fn it_should_render_the_result_of_an_expression_returning_an_str() {
+        let code = rsx! {
+          <h1>{"Hello"}</h1>
+        };
+
+        let html = render(code);
+        assert_eq!("<h1>Hello</h1>", html);
+    }
+
+    #[test]
+    fn it_should_render_with_str_variables() {
+        let text = "yay!";
+        let code = rsx! {
+          <h1>
+            {"Hello world"}
+            This is working
+            {text}
+          </h1>
+        };
+
+        let html = render(code);
+        assert_eq!("<h1>Hello</h1>", html);
     }
 }

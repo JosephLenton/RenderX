@@ -407,7 +407,7 @@ mod parse {
             let code = quote! {
                 <!--
                     this is a <div> </hr> comment
-                    {&"this is some code"}
+                    {"this is some code"}
                     "this is another string"
                 -->
             };
@@ -415,7 +415,7 @@ mod parse {
             let expected = Node::Comment {
                 children: Some(vec![
                     Node::Text("this is a <div> </ hr> comment".to_string()),
-                    Node::Code("& \"this is some code\"".to_string()),
+                    Node::Code(quote! {"this is some code"}),
                     Node::Text("this is another string".to_string()),
                 ]),
             };
@@ -524,8 +524,8 @@ mod parse {
           <div></p>
         };
 
-        let result = parse(code.into());
-        assert_eq!(result, Err(Error::MismatchedTagName),);
+        let error = parse(code.into()).err().unwrap();
+        assert_eq!(error, Error::MismatchedTagName);
     }
 
     #[test]
@@ -608,9 +608,9 @@ mod parse {
             name: "button".to_string(),
             attributes: Some(vec![Attribute {
                 key: "type".to_string(),
-                value: Some(AttributeValue::Code(
-                    "base_class . child (\"el\")".to_string(),
-                )),
+                value: Some(AttributeValue::Code(quote! {
+                    base_class.child("el")
+                })),
             }]),
         };
 
@@ -694,9 +694,13 @@ mod parse {
         let expected = Node::Open {
             name: "div".to_string(),
             attributes: None,
-            children: Some(vec![Node::Code(
-                "if foo { & \"blah\" } else { & \"foobar\" }".to_string(),
-            )]),
+            children: Some(vec![Node::Code(quote! {
+                if foo {
+                    &"blah"
+                } else {
+                    &"foobar"
+                }
+            })]),
         };
 
         assert_eq_nodes(code, expected)
@@ -773,13 +777,6 @@ mod parse {
         assert_eq_nodes(code, expected)
     }
 
-    fn assert_eq_nodes(tokens: TokenStream, expected_nodes: Node) -> Result<()> {
-        let nodes = parse(tokens.into())?;
-        assert_eq!(nodes, expected_nodes,);
-
-        Ok(())
-    }
-
     #[cfg(test)]
     mod root_fragments {
         use super::*;
@@ -831,5 +828,12 @@ mod parse {
 
             assert_eq_nodes(code, expected)
         }
+    }
+
+    fn assert_eq_nodes(tokens: TokenStream, expected_nodes: Node) -> Result<()> {
+        let nodes = parse(tokens.into())?;
+        assert_eq!(nodes, expected_nodes);
+
+        Ok(())
     }
 }

@@ -14,9 +14,29 @@ impl<N: ToChild> ToChild for Option<N> {
     }
 }
 
+impl ToChild for &&'static str {
+    fn to_child(self) -> Child {
+        Child::Text { contents: *self }
+    }
+}
+
 impl ToChild for &'static str {
     fn to_child(self) -> Child {
         Child::Text { contents: self }
+    }
+}
+
+impl ToChild for Vec<&'static str> {
+    fn to_child(self) -> Child {
+        if self.len() == 0 {
+          Child::None
+        } else if self.len() == 1 {
+          Child::Text { contents: self[0] }
+        } else {
+          Child::Nodes {
+            nodes: self.into_iter().map(|text| Node::Text { contents: text }).collect()
+          }
+        }
     }
 }
 

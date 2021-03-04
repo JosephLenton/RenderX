@@ -24,3 +24,7 @@
     * Should content be escaped???
       * Children of a node???
       * Attribute values???
+
+  * Output - Optimise what is laid out.
+    * Attributes use a static list of key=value where possible.
+    * Nodes use a static list of nodes where possible.

@@ -73,7 +73,6 @@ fn visit_node(node: Node) -> TokenStream {
             }
         }
         Node::Code(code) => {
-            unimplemented!();
             quote! {
                 #code
             }
@@ -191,6 +190,40 @@ mod build {
             name: "h1".to_string(),
             attributes: None,
             children: Some(vec![Node::Text("hello world!".to_string())]),
+        });
+
+        let expected = quote! {
+          ::renderx::dom::Node::new_open("h1", None, Some(vec![
+            ::renderx::dom::Node::Text {
+              contents: "hello world!",
+            }
+          ]))
+        };
+
+        assert_eq!(expected.to_string(), code.to_string());
+    }
+}
+
+#[cfg(test)]
+mod code {
+    use super::*;
+    use ::pretty_assertions::assert_eq;
+    use ::quote::quote;
+
+    #[test]
+    fn it_should_transform_code() {
+        let code = build(Node::Open {
+            name: "h1".to_string(),
+            attributes: None,
+            children: Some(vec![
+                Node::Code(quote! {
+                  "Hello world!"
+                }),
+                Node::Text("hello world!".to_string()),
+                Node::Code(quote! {
+                  text
+                }),
+            ]),
         });
 
         let expected = quote! {
