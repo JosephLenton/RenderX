@@ -27,9 +27,9 @@ impl TokenIterator {
         self.iter.lookahead(0)
     }
 
-    pub fn lookahead_puncts(&mut self, cs: &[char]) -> bool {
+    pub fn is_lookahead_puncts(&mut self, cs: &[char]) -> bool {
         for (i, c) in cs.iter().enumerate() {
-            if !self.lookahead_punct(*c, i) {
+            if !self.is_lookahead_punct(*c, i) {
                 return false;
             }
         }
@@ -41,9 +41,17 @@ impl TokenIterator {
         self.iter.lookahead(index)
     }
 
-    pub fn lookahead_punct(&mut self, c: char, index: usize) -> bool {
+    pub fn is_lookahead_punct(&mut self, c: char, index: usize) -> bool {
         if let Some(TokenTree::Punct(punct)) = self.lookahead(index) {
             return punct.as_char() == c;
+        }
+
+        false
+    }
+
+    pub fn is_lookahead_ident(&mut self, index: usize) -> bool {
+        if let Some(TokenTree::Ident(_)) = self.lookahead(index) {
+            return true;
         }
 
         false
@@ -66,7 +74,7 @@ impl TokenIterator {
     }
 
     pub fn is_next_punct(&mut self, c: char) -> bool {
-        self.lookahead_punct(c, 0)
+        self.is_lookahead_punct(c, 0)
     }
 
     /// Returns true if empty.
@@ -259,7 +267,7 @@ mod flatten {
 }
 
 #[cfg(test)]
-mod lookahead_puncts {
+mod is_lookahead_puncts {
     use super::*;
     use ::quote::quote;
 
@@ -270,10 +278,10 @@ mod lookahead_puncts {
         };
 
         let mut input = TokenIterator::new(tokens);
-        assert!(input.lookahead_puncts(&['+']));
-        assert!(input.lookahead_puncts(&['+', '+']));
-        assert!(input.lookahead_puncts(&['+', '+', '=']));
-        assert!(input.lookahead_puncts(&['+', '+', '=', '+']));
+        assert!(input.is_lookahead_puncts(&['+']));
+        assert!(input.is_lookahead_puncts(&['+', '+']));
+        assert!(input.is_lookahead_puncts(&['+', '+', '=']));
+        assert!(input.is_lookahead_puncts(&['+', '+', '=', '+']));
     }
 
     #[test]
@@ -283,6 +291,6 @@ mod lookahead_puncts {
         };
 
         let mut input = TokenIterator::new(tokens);
-        assert_eq!(false, input.lookahead_puncts(&['+', '+', '=', '+', '+']));
+        assert_eq!(false, input.is_lookahead_puncts(&['+', '+', '=', '+', '+']));
     }
 }

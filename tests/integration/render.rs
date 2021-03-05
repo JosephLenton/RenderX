@@ -198,6 +198,46 @@ mod attributes {
         let html = render(code);
         assert_eq!("<button>Click me</button>", html);
     }
+
+    #[test]
+    fn it_should_support_hyphens_in_attribute_names() {
+        let code = rsx! {
+          <button data-name="MrButton">Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button data-name=\"MrButton\">Click me</button>", html);
+    }
+
+    #[test]
+    fn it_should_support_hyphens_before_attribute_keys() {
+        let code = rsx! {
+          <button --data-name="MrButton">Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button --data-name=\"MrButton\">Click me</button>", html);
+    }
+
+    #[test]
+    fn it_should_support_multiple_single_attribute_keys_in_a_row() {
+        let code = rsx! {
+          <button disabled inert>Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button disabled inert>Click me</button>", html);
+    }
+
+    #[test]
+    fn it_should_support_multiple_attribute_keys_with_hyphens_in_a_row() {
+        let code = rsx! {
+          <button data-js-track data-disabled data-name="MrButton">Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button data-js-track data-disabled data-name=\"MrButton\">Click me</button>", html);
+    }
 }
 
 #[cfg(test)]
@@ -232,7 +272,6 @@ mod code {
 
     #[test]
     fn it_should_render_with_a_child_of_rsx() {
-        let text = " yay!";
         let code = rsx! {
           <div>
             pre

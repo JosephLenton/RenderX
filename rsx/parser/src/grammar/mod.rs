@@ -61,8 +61,8 @@ fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
 
 fn parse_node(input: &mut TokenIterator) -> Result<Node> {
     if input.is_next_punct(LEFT_ANGLE) {
-        if input.lookahead_punct(EXCLAMATION_MARK, 1) {
-            if input.lookahead_punct(HYPHEN, 2) {
+        if input.is_lookahead_punct(EXCLAMATION_MARK, 1) {
+            if input.is_lookahead_punct(HYPHEN, 2) {
                 parse_node_comment(input)
             } else {
                 parse_node_doctype(input)
@@ -95,7 +95,7 @@ fn parse_comment_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>
             return Err(Error::MoreTokensExpected);
         }
 
-        if input.lookahead_puncts(&COMMENT_CLOSING_LOOKAHEAD) {
+        if input.is_lookahead_puncts(&COMMENT_CLOSING_LOOKAHEAD) {
             return Ok(maybe_children);
         }
 
@@ -125,7 +125,7 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     input.chomp_punct(LEFT_ANGLE)?;
 
     // parses </>
-    if input.lookahead_puncts(&[FORWARD_SLASH, RIGHT_ANGLE]) {
+    if input.is_lookahead_puncts(&[FORWARD_SLASH, RIGHT_ANGLE]) {
         input.chomp_puncts(&[FORWARD_SLASH, RIGHT_ANGLE])?;
         return Ok(Node::Empty);
     }
@@ -194,19 +194,54 @@ fn parse_attributes(input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>>
 }
 
 fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
-    if input.is_next_ident() {
-        let key = input.chomp_ident()?;
-        let value = if input.is_next_punct(EQUALS) {
-            input.chomp_punct(EQUALS)?;
-            Some(parse_attribute_value(input)?)
-        } else {
-            None
-        };
+    let maybe_key = parse_attribute_key(input)?;
+    if maybe_key.is_none() {
+        return Ok(None);
+    }
 
+    let key = maybe_key.unwrap();
+    if input.is_next_punct(EQUALS) {
+        input.chomp_punct(EQUALS)?;
+        let value = Some(parse_attribute_value(input)?);
         return Ok(Some(Attribute { key, value }));
     }
 
-    Ok(None)
+    Ok(Some(Attribute { key, value: None }))
+}
+
+fn parse_attribute_key(input: &mut TokenIterator) -> Result<Option<String>> {
+    let mut maybe_key: Option<String> = None;
+
+    loop {
+        while input.is_next_punct(HYPHEN) {
+            match maybe_key.as_mut() {
+                Some(key) => write!(key, "{}", input.chomp()?)?,
+                None => maybe_key = Some(input.chomp()?.to_string()),
+            }
+        }
+
+        if input.is_next_ident() {
+            match maybe_key.as_mut() {
+                Some(key) => write!(key, "{}", input.chomp()?)?,
+                None => maybe_key = Some(input.chomp()?.to_string()),
+            }
+        }
+
+        // Check if there is a `-name` ahead of us.
+        // If there is we will capture that too.
+        let mut i = 0;
+        while input.is_lookahead_punct(HYPHEN, i) {
+            i += 1;
+        }
+
+        if i > 0 && input.is_lookahead_ident(i) {
+            continue;
+        }
+
+        break;
+    }
+
+    Ok(maybe_key)
 }
 
 fn parse_attribute_value(input: &mut TokenIterator) -> Result<AttributeValue> {
@@ -228,7 +263,7 @@ fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>> {
             return Err(Error::MoreTokensExpected);
         }
 
-        if input.lookahead_puncts(&TAG_CLOSING_LOOKAHEAD) {
+        if input.is_lookahead_puncts(&TAG_CLOSING_LOOKAHEAD) {
             return Ok(maybe_children);
         }
 
@@ -247,7 +282,7 @@ fn parse_text(input: &mut TokenIterator, stopping_lookaheads: &[char]) -> Result
 
     while !input.is_brace_group()
         && !input.is_empty()
-        && !input.lookahead_puncts(stopping_lookaheads)
+        && !input.is_lookahead_puncts(stopping_lookaheads)
     {
         let next = input.chomp()?;
 
