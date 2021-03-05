@@ -2,8 +2,8 @@ use ::proc_macro2::TokenStream;
 use ::quote::quote;
 
 use crate::ast::Attribute;
-use crate::ast::AttributeValue;
 use crate::ast::Node;
+use crate::ast::Value;
 
 pub fn build(ast: Node) -> TokenStream {
     visit_node(ast)
@@ -17,11 +17,12 @@ fn visit_node(node: Node) -> TokenStream {
             }
         }
         Node::Doctype { name, attributes } => {
+            let name_tokens = visit_node_name(name);
             let attribute_tokens = visit_optional_attributes(attributes);
 
             quote! {
                 ::renderx::dom::Node::Doctype {
-                  name: #name,
+                  name: #name_tokens,
                   attributes: #attribute_tokens,
                 }
             }
@@ -45,10 +46,11 @@ fn visit_node(node: Node) -> TokenStream {
             }
         }
         Node::SelfClosing { name, attributes } => {
+            let name_tokens = visit_node_name(name);
             let attribute_tokens = visit_optional_attributes(attributes);
 
             quote! {
-                ::renderx::dom::Node::new_self_closing(#name, #attribute_tokens)
+                ::renderx::dom::Node::new_self_closing(#name_tokens, #attribute_tokens)
             }
         }
         Node::Open {
@@ -56,11 +58,12 @@ fn visit_node(node: Node) -> TokenStream {
             attributes,
             children,
         } => {
+            let name_tokens = visit_node_name(name);
             let attribute_tokens = visit_optional_attributes(attributes);
             let children_tokens = visit_optional_children(children);
 
             quote! {
-                ::renderx::dom::Node::new_open(#name, #attribute_tokens, #children_tokens)
+                ::renderx::dom::Node::new_open(#name_tokens, #attribute_tokens, #children_tokens)
             }
         }
         Node::Text(text) => {
@@ -75,6 +78,17 @@ fn visit_node(node: Node) -> TokenStream {
                 ::renderx::dom::ToNode::to_node(#code)
             }
         }
+    }
+}
+
+fn visit_node_name(name: Value) -> TokenStream {
+    match name {
+        Value::Text(text) => quote! {
+            #text
+        },
+        Value::Code(code) => quote! {
+            #code
+        },
     }
 }
 
@@ -103,25 +117,36 @@ fn visit_attributes(attributes: Vec<Attribute>) -> TokenStream {
 }
 
 fn visit_attribute(attribute: Attribute) -> TokenStream {
-    let key = attribute.key;
-    let value = attribute.value;
+    let key = visit_attribute_key(attribute.key);
+    let value = visit_attribute_value(attribute.value);
 
+    quote! {
+        ::renderx::dom::Attribute::new(#key, #value)
+    }
+}
+
+fn visit_attribute_key(key: Value) -> TokenStream {
+    match key {
+        Value::Text(text) => quote! {
+            #text
+        },
+        Value::Code(code) => quote! {
+            #code
+        },
+    }
+}
+
+fn visit_attribute_value(value: Option<Value>) -> TokenStream {
     match value {
-        None => {
-            quote! {
-                ::renderx::dom::Attribute::new(#key, ::renderx::dom::AttributeValue::ImplicitTrue)
-            }
-        }
-        Some(AttributeValue::Text(text)) => {
-            quote! {
-                ::renderx::dom::Attribute::new(#key, ::renderx::dom::ToAttributeValue::to_attribute_value(#text))
-            }
-        }
-        Some(AttributeValue::Code(code)) => {
-            quote! {
-                ::renderx::dom::Attribute::new(#key, ::renderx::dom::ToAttributeValue::to_attribute_value(#code))
-            }
-        }
+        None => quote! {
+            ::renderx::dom::AttributeValue::ImplicitTrue
+        },
+        Some(Value::Text(text)) => quote! {
+            ::renderx::dom::ToAttributeValue::to_attribute_value(#text)
+        },
+        Some(Value::Code(code)) => quote! {
+            ::renderx::dom::ToAttributeValue::to_attribute_value(#code)
+        },
     }
 }
 
@@ -156,7 +181,7 @@ mod nodes {
     #[test]
     fn it_should_output_simple_self_closing_nodes() {
         let code = build(Node::SelfClosing {
-            name: "hr".to_string(),
+            name: Value::Text("hr".to_string()),
             attributes: None,
         });
 
@@ -170,7 +195,7 @@ mod nodes {
     #[test]
     fn it_should_output_simple_open_nodes() {
         let code = build(Node::Open {
-            name: "div".to_string(),
+            name: Value::Text("div".to_string()),
             attributes: None,
             children: None,
         });
@@ -191,7 +216,7 @@ mod literals {
     #[test]
     fn it_should_output_nodes_with_literals() {
         let code = build(Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: Some(vec![Node::Text("hello world!".to_string())]),
         });
@@ -217,7 +242,7 @@ mod code {
     #[test]
     fn it_should_transform_code() {
         let code = build(Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: Some(vec![
                 Node::Code(quote! {

@@ -12,11 +12,11 @@
     - Code for attributes, i.e. `<div key={some_variable} />`
     - Attribute keys with hyphens and underscores in them. i.e. `<div data-name="div">`
     - Using a literal for an attribute key. i.e. `<div "data-name"="blah" />`. This is for full DOCTYPE support.
-    * Using code as the name for an attribute key. i.e. `<div {"disabled"} />`
+    - Using code as the name for an attribute key. i.e. `<div {"disabled"} />`
 
   * Nodes
-    * Namespaces; this is names with the form `a:b:c`. i.e. the `blah:foo` in `<blah:foo />`
-    * Being able to use code for a node name. i.e. `let el = &"div"; <{el} />`
+    - Namespaces; this is names with the form `a:b:c`. i.e. the `blah:foo` in `<blah:foo />`
+    - Being able to use code for a node name. i.e. `let el = &"div"; <{el} />`
 
   * Structure
     * Replacate the grammar tests for render integration tests.

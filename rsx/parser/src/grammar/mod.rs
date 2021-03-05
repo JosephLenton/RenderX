@@ -1,10 +1,10 @@
 use crate::ast::Attribute;
-use crate::ast::AttributeValue;
 use crate::ast::Node;
+use crate::ast::Value;
 use crate::error::Error;
 use crate::error::Result;
 
-use ::proc_macro2::Spacing;
+use crate::token_stream_compare::token_stream_eq;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;
@@ -116,7 +116,7 @@ fn parse_comment_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>
 
 fn parse_node_doctype(input: &mut TokenIterator) -> Result<Node> {
     input.chomp_puncts(&[LEFT_ANGLE, EXCLAMATION_MARK])?;
-    let name = input.chomp_ident()?;
+    let name = parse_name(input)?;
     let attributes = parse_attributes(input)?;
     input.chomp_punct(RIGHT_ANGLE)?;
 
@@ -146,7 +146,6 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
 
     // Real tags from here on. i.e. <div></div> and <hr />
     let opening_tag_name = parse_name(input)?;
-
     let attributes = parse_attributes(input)?;
 
     if input.is_next_punct(FORWARD_SLASH) {
@@ -167,8 +166,22 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     let closing_tag_name = parse_name(input)?;
     input.chomp_punct(RIGHT_ANGLE)?;
 
-    if closing_tag_name != opening_tag_name {
-        return Err(Error::MismatchedTagName);
+    match (&opening_tag_name, &closing_tag_name) {
+        (Value::Text(left_text), Value::Text(right_text)) => {
+            if left_text != right_text {
+                return Err(Error::MismatchedClosingTagName);
+            }
+        }
+        (Value::Code(left_code), Value::Code(right_code)) => {
+            if !right_code.is_empty() {
+                if !token_stream_eq(&left_code, &right_code) {
+                    return Err(Error::MismatchedClosingTagCode);
+                }
+            }
+        }
+        _ => {
+            return Err(Error::MismatchedClosingTagName);
+        }
     }
 
     Ok(Node::Open {
@@ -211,26 +224,30 @@ fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
     Ok(Some(Attribute { key, value: None }))
 }
 
-fn parse_attribute_value(input: &mut TokenIterator) -> Result<AttributeValue> {
+fn parse_attribute_value(input: &mut TokenIterator) -> Result<Value> {
     if input.is_brace_group() {
-        Ok(AttributeValue::Code(input.chomp_brace_group()?))
+        Ok(Value::Code(input.chomp_brace_group()?))
     } else {
-        Ok(AttributeValue::Text(input.chomp_literal()?))
+        Ok(Value::Text(input.chomp_literal()?))
     }
 }
 
-fn parse_name(input: &mut TokenIterator) -> Result<String> {
+fn parse_name(input: &mut TokenIterator) -> Result<Value> {
     match parse_maybe_name(input)? {
         Some(name) => Ok(name),
         None => Err(Error::ExpectedName),
     }
 }
 
-fn parse_maybe_name(input: &mut TokenIterator) -> Result<Option<String>> {
+fn parse_maybe_name(input: &mut TokenIterator) -> Result<Option<Value>> {
     let mut maybe_key: Option<String> = None;
 
     if input.is_next_literal() {
-        return Ok(Some(input.chomp_literal()?));
+        return Ok(Some(Value::Text(input.chomp_literal()?)));
+    }
+
+    if input.is_brace_group() {
+        return Ok(Some(Value::Code(input.chomp_brace_group()?)));
     }
 
     loop {
@@ -264,7 +281,7 @@ fn parse_maybe_name(input: &mut TokenIterator) -> Result<Option<String>> {
         break;
     }
 
-    Ok(maybe_key)
+    Ok(maybe_key.map(|text| Value::Text(text)))
 }
 
 /// Finds and grabs all child nodes, and then returns them in a Vec.
@@ -381,9 +398,9 @@ mod parse {
             };
 
             let expected = Node::Doctype {
-                name: "doctype".to_string(),
+                name: Value::Text("doctype".to_string()),
                 attributes: Some(vec![Attribute {
-                    key: "html".to_string(),
+                    key: Value::Text("html".to_string()),
                     value: None,
                 }]),
             };
@@ -398,9 +415,9 @@ mod parse {
             };
 
             let expected = Node::Doctype {
-                name: "DoCtYpE".to_string(),
+                name: Value::Text("DoCtYpE".to_string()),
                 attributes: Some(vec![Attribute {
-                    key: "html".to_string(),
+                    key: Value::Text("html".to_string()),
                     value: None,
                 }]),
             };
@@ -523,13 +540,13 @@ mod parse {
             let expected = Node::Fragment {
                 children: vec![
                     Node::Open {
-                        name: "h1".to_string(),
+                        name: Value::Text("h1".to_string()),
                         attributes: None,
                         children: Some(vec![Node::Text("This is a heading".to_string())]),
                     },
                     Node::Text("This is some text".to_string()),
                     Node::SelfClosing {
-                        name: "hr".to_string(),
+                        name: Value::Text("hr".to_string()),
                         attributes: None,
                     },
                 ],
@@ -546,7 +563,7 @@ mod parse {
         };
 
         let expected = Node::SelfClosing {
-            name: "div".to_string(),
+            name: Value::Text("div".to_string()),
             attributes: None,
         };
 
@@ -560,7 +577,7 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: None,
         };
@@ -575,7 +592,7 @@ mod parse {
         };
 
         let error = parse(code.into()).err().unwrap();
-        assert_eq!(error, Error::MismatchedTagName);
+        assert_eq!(error, Error::MismatchedClosingTagName);
     }
 
     #[test]
@@ -585,9 +602,9 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "button".to_string(),
+            name: Value::Text("button".to_string()),
             attributes: Some(vec![Attribute {
-                key: "is_disabled".to_string(),
+                key: Value::Text("is_disabled".to_string()),
                 value: None,
             }]),
             children: None,
@@ -613,9 +630,9 @@ mod parse {
         };
 
         let expected = Node::SelfClosing {
-            name: "button".to_string(),
+            name: Value::Text("button".to_string()),
             attributes: Some(vec![Attribute {
-                key: "is_disabled".to_string(),
+                key: Value::Text("is_disabled".to_string()),
                 value: None,
             }]),
         };
@@ -630,10 +647,10 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "button".to_string(),
+            name: Value::Text("button".to_string()),
             attributes: Some(vec![Attribute {
-                key: "type".to_string(),
-                value: Some(AttributeValue::Text("input".to_string())),
+                key: Value::Text("type".to_string()),
+                value: Some(Value::Text("input".to_string())),
             }]),
             children: None,
         };
@@ -648,10 +665,10 @@ mod parse {
         };
 
         let expected = Node::SelfClosing {
-            name: "button".to_string(),
+            name: Value::Text("button".to_string()),
             attributes: Some(vec![Attribute {
-                key: "type".to_string(),
-                value: Some(AttributeValue::Text("input".to_string())),
+                key: Value::Text("type".to_string()),
+                value: Some(Value::Text("input".to_string())),
             }]),
         };
 
@@ -665,10 +682,10 @@ mod parse {
         };
 
         let expected = Node::SelfClosing {
-            name: "button".to_string(),
+            name: Value::Text("button".to_string()),
             attributes: Some(vec![Attribute {
-                key: "type".to_string(),
-                value: Some(AttributeValue::Code(quote! {
+                key: Value::Text("type".to_string()),
+                value: Some(Value::Code(quote! {
                     base_class.child("el")
                 })),
             }]),
@@ -686,10 +703,10 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "div".to_string(),
+            name: Value::Text("div".to_string()),
             attributes: None,
             children: Some(vec![Node::SelfClosing {
-                name: "h1".to_string(),
+                name: Value::Text("h1".to_string()),
                 attributes: None,
             }]),
         };
@@ -710,25 +727,25 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "div".to_string(),
+            name: Value::Text("div".to_string()),
             attributes: None,
             children: Some(vec![
                 Node::Open {
-                    name: "h1".to_string(),
+                    name: Value::Text("h1".to_string()),
                     attributes: None,
                     children: None,
                 },
                 Node::Open {
-                    name: "span".to_string(),
+                    name: Value::Text("span".to_string()),
                     attributes: None,
                     children: Some(vec![Node::Open {
-                        name: "div".to_string(),
+                        name: Value::Text("div".to_string()),
                         attributes: None,
                         children: None,
                     }]),
                 },
                 Node::SelfClosing {
-                    name: "article".to_string(),
+                    name: Value::Text("article".to_string()),
                     attributes: None,
                 },
             ]),
@@ -752,7 +769,7 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "div".to_string(),
+            name: Value::Text("div".to_string()),
             attributes: None,
             children: Some(vec![Node::Code(quote! {
                 if foo {
@@ -775,7 +792,7 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: Some(vec![Node::Text("Upgrade today!".to_string())]),
         };
@@ -792,7 +809,7 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: Some(vec![Node::Text("(Upgrade today!)".to_string())]),
         };
@@ -809,7 +826,7 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: Some(vec![Node::Text(
                 "You should (Upgrade (to something new) today! + = 5 (maybe)) if you want to"
@@ -829,7 +846,7 @@ mod parse {
         };
 
         let expected = Node::Open {
-            name: "h1".to_string(),
+            name: Value::Text("h1".to_string()),
             attributes: None,
             children: Some(vec![Node::Text("Upgrade today!".to_string())]),
         };
@@ -854,7 +871,7 @@ mod parse {
             let expected = Node::Fragment {
                 children: vec![
                     Node::Open {
-                        name: "h1".to_string(),
+                        name: Value::Text("h1".to_string()),
                         attributes: None,
                         children: Some(vec![Node::Text("Upgrade today!".to_string())]),
                     },
@@ -878,7 +895,7 @@ mod parse {
                 children: vec![
                     Node::Text("blah blah".to_string()),
                     Node::Open {
-                        name: "h1".to_string(),
+                        name: Value::Text("h1".to_string()),
                         attributes: None,
                         children: Some(vec![Node::Text("Upgrade today!".to_string())]),
                     },

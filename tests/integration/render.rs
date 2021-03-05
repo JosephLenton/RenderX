@@ -180,7 +180,7 @@ mod attributes {
 
     #[test]
     fn it_should_not_render_attribute_if_option_none() {
-        let input_type : Option<&'static str> = None;
+        let input_type: Option<&'static str> = None;
         let code = rsx! {
           <input type={input_type} />
         };
@@ -246,7 +246,10 @@ mod attributes {
         };
 
         let html = render(code);
-        assert_eq!("<button data-js-track data-disabled data-name=\"MrButton\">Click me</button>", html);
+        assert_eq!(
+            "<button data-js-track data-disabled data-name=\"MrButton\">Click me</button>",
+            html
+        );
     }
 
     #[test]
@@ -256,7 +259,32 @@ mod attributes {
         };
 
         let html = render(code);
-        assert_eq!("<button disabled data-name=\"MrButton\" 🌧️=\"❤️\">Click me</button>", html);
+        assert_eq!(
+            "<button disabled data-name=\"MrButton\" 🌧️=\"❤️\">Click me</button>",
+            html
+        );
+    }
+
+    #[test]
+    fn it_should_render_keys_using_code() {
+        let key = "min";
+        let code = rsx! {
+          <input type="text" {key}={0} />
+        };
+
+        let html = render(code);
+        assert_eq!("<input type=\"text\" min=\"0\"/>", html);
+    }
+
+    #[test]
+    fn it_should_render_solo_keys_using_code() {
+        let attr = "disabled";
+        let code = rsx! {
+          <button {attr}>Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button disabled>Click me</button>", html);
     }
 }
 
@@ -304,5 +332,41 @@ mod code {
 
         let html = render(code);
         assert_eq!("<div>pre<h1>I am a heading</h1>post</div>", html);
+    }
+
+    #[test]
+    fn it_should_render_with_code_providing_component_name() {
+        let el = "span";
+
+        let code = rsx! {
+          <{el}/>
+        };
+
+        let html = render(code);
+        assert_eq!("<span/>", html);
+    }
+
+    #[test]
+    fn it_should_render_with_code_name_and_code_closing_tag() {
+        let el = "span";
+
+        let code = rsx! {
+          <{el}></{el}>
+        };
+
+        let html = render(code);
+        assert_eq!("<span></span>", html);
+    }
+
+    #[test]
+    fn it_should_render_with_code_name_and_empty_closing_tag() {
+        let el = "span";
+
+        let code = rsx! {
+          <{el}></{}>
+        };
+
+        let html = render(code);
+        assert_eq!("<span></span>", html);
     }
 }

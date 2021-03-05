@@ -5,6 +5,8 @@ pub type Result<N> = ::std::result::Result<N, Error>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Error {
+    MismatchedClosingTagCode,
+    MismatchedClosingTagName,
     ExpectedName,
     EmptyMacroStreamGiven,
     UnexpectedStartingInput,
@@ -13,7 +15,6 @@ pub enum Error {
     PeekOnEmptyNode,
     MoreTokensExpected,
     ChompOnEmptyNode,
-    MismatchedTagName,
     FmtError(fmt::Error),
 }
 

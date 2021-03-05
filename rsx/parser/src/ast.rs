@@ -1,10 +1,11 @@
+use crate::token_stream_compare::token_stream_eq;
 use ::proc_macro2::TokenStream;
 
 #[derive(Clone, Debug)]
 pub enum Node {
     Empty,
     Doctype {
-        name: String,
+        name: Value,
         attributes: Option<Vec<Attribute>>,
     },
     Comment {
@@ -15,12 +16,12 @@ pub enum Node {
     },
     /// Self closing tags. i.e. <hr />
     SelfClosing {
-        name: String,
+        name: Value,
         attributes: Option<Vec<Attribute>>,
     },
     /// Tags that have children. i.e. <div></div>
     Open {
-        name: String,
+        name: Value,
         attributes: Option<Vec<Attribute>>,
         children: Option<Vec<Node>>,
     },
@@ -30,12 +31,12 @@ pub enum Node {
 
 #[derive(Clone, Debug)]
 pub struct Attribute {
-    pub key: String,
-    pub value: Option<AttributeValue>,
+    pub key: Value,
+    pub value: Option<Value>,
 }
 
 #[derive(Clone, Debug)]
-pub enum AttributeValue {
+pub enum Value {
     Text(String),
     Code(TokenStream),
 }
@@ -48,9 +49,9 @@ pub enum AttributeValue {
 #[cfg(test)]
 mod test_utils {
     use super::Attribute;
-    use super::AttributeValue;
     use super::Node;
     use super::TokenStream;
+    use super::Value;
 
     impl PartialEq for Node {
         fn eq(&self, other: &Self) -> bool {
@@ -121,19 +122,13 @@ mod test_utils {
         }
     }
 
-    impl PartialEq for AttributeValue {
+    impl PartialEq for Value {
         fn eq(&self, other: &Self) -> bool {
             match (self, other) {
-                (AttributeValue::Text(left), AttributeValue::Text(right)) => left == right,
-                (AttributeValue::Code(left), AttributeValue::Code(right)) => {
-                    token_stream_eq(left, right)
-                }
+                (Value::Text(left), Value::Text(right)) => left == right,
+                (Value::Code(left), Value::Code(right)) => token_stream_eq(&left, &right),
                 _ => false,
             }
         }
-    }
-
-    fn token_stream_eq(left: &TokenStream, right: &TokenStream) -> bool {
-        format!("{:#?}", left) == format!("{:#?}", right)
     }
 }

@@ -4,6 +4,7 @@ mod ast;
 mod error;
 mod grammar;
 mod output;
+mod token_stream_compare;
 
 use crate::error::Result;
 pub use crate::error::*;
