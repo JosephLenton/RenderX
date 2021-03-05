@@ -77,6 +77,14 @@ impl TokenIterator {
         self.is_lookahead_punct(c, 0)
     }
 
+    pub fn is_next_literal(&mut self) -> bool {
+        if let Some(TokenTree::Literal(_)) = self.peek() {
+            return true;
+        }
+
+        false
+    }
+
     /// Returns true if empty.
     pub fn is_empty(&mut self) -> bool {
         self.peek().is_none()

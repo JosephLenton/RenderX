@@ -212,6 +212,10 @@ fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
 fn parse_attribute_key(input: &mut TokenIterator) -> Result<Option<String>> {
     let mut maybe_key: Option<String> = None;
 
+    if input.is_next_literal() {
+        return Ok(Some(input.chomp_literal()?));
+    }
+
     loop {
         while input.is_next_punct(HYPHEN) {
             match maybe_key.as_mut() {

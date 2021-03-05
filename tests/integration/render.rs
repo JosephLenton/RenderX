@@ -238,6 +238,16 @@ mod attributes {
         let html = render(code);
         assert_eq!("<button data-js-track data-disabled data-name=\"MrButton\">Click me</button>", html);
     }
+
+    #[test]
+    fn it_should_support_text_literals_for_attribute_names() {
+        let code = rsx! {
+          <button "disabled" "data-name"="MrButton" "🌧️"="❤️">Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button disabled data-name=\"MrButton\" \"🌧️\"=\"❤️\">Click me</button>", html);
+    }
 }
 
 #[cfg(test)]
