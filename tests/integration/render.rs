@@ -148,6 +148,28 @@ mod attributes {
     }
 
     #[test]
+    fn it_should_render_attribute_if_option_some() {
+        let input_type = Some("text");
+        let code = rsx! {
+          <input type={input_type} />
+        };
+
+        let html = render(code);
+        assert_eq!("<input type=\"text\"/>", html);
+    }
+
+    #[test]
+    fn it_should_not_render_attribute_if_option_none() {
+        let input_type : Option<&'static str> = None;
+        let code = rsx! {
+          <input type={input_type} />
+        };
+
+        let html = render(code);
+        assert_eq!("<input/>", html);
+    }
+
+    #[test]
     fn it_should_support_key_value_as_number() {
         let code = rsx! {
           <input type="text" min={0} />
@@ -155,6 +177,26 @@ mod attributes {
 
         let html = render(code);
         assert_eq!("<input type=\"text\" min=\"0\"/>", html);
+    }
+
+    #[test]
+    fn it_should_render_attribute_if_bool_true() {
+        let code = rsx! {
+          <button disabled={true}>Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button disabled>Click me</button>", html);
+    }
+
+    #[test]
+    fn it_should_not_render_attribute_if_bool_false() {
+        let code = rsx! {
+          <button disabled={false}>Click me</button>
+        };
+
+        let html = render(code);
+        assert_eq!("<button>Click me</button>", html);
     }
 }
 
