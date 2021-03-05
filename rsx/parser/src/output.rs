@@ -109,17 +109,17 @@ fn visit_attribute(attribute: Attribute) -> TokenStream {
     match value {
         None => {
             quote! {
-                ::renderx::dom::Attribute::new(#key, None)
+                ::renderx::dom::Attribute::new(#key, ::renderx::dom::AttributeValue::ImplicitTrue)
             }
         }
         Some(AttributeValue::Text(text)) => {
             quote! {
-                ::renderx::dom::Attribute::new(#key, Some(#text))
+                ::renderx::dom::Attribute::new(#key, ::renderx::dom::ToAttributeValue::to_attribute_value(#text))
             }
         }
         Some(AttributeValue::Code(code)) => {
             quote! {
-                ::renderx::dom::Attribute::new(#key, Some(#code))
+                ::renderx::dom::Attribute::new(#key, ::renderx::dom::ToAttributeValue::to_attribute_value(#code))
             }
         }
     }

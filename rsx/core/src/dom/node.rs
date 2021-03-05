@@ -2,35 +2,49 @@ use crate::dom::Attribute;
 use crate::dom::Child;
 use crate::dom::ToChild;
 
+/// The contents of the Node are all doc-hidden.
+/// This is because the Node structure may change in future releases.
+///
+/// You can look in the source code if you want to use it directly.
+/// Just be aware a future release might break your code.
 #[derive(Clone, Debug)]
 pub enum Node {
+    #[doc(hidden)]
     Empty,
+
+    #[doc(hidden)]
     Doctype {
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
     },
-    Comment {
-        children: Option<Vec<Self>>,
-    },
-    Fragment {
-        children: Vec<Self>,
-    },
+
+    #[doc(hidden)]
+    Comment { children: Option<Vec<Self>> },
+
+    #[doc(hidden)]
+    Fragment { children: Vec<Self> },
+
+    #[doc(hidden)]
     SelfClosing {
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
     },
+
+    #[doc(hidden)]
     OpenEmpty {
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
     },
+
+    #[doc(hidden)]
     OpenWithChildren {
         name: &'static str,
         attributes: Option<Vec<Attribute>>,
         child: Child,
     },
-    Text {
-        contents: &'static str,
-    },
+
+    #[doc(hidden)]
+    Text { contents: &'static str },
 }
 
 impl Node {

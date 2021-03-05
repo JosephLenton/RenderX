@@ -146,6 +146,16 @@ mod attributes {
         let html = render(code);
         assert_eq!("<input type=\"text\"/>", html);
     }
+
+    #[test]
+    fn it_should_support_key_value_as_number() {
+        let code = rsx! {
+          <input type="text" min={0} />
+        };
+
+        let html = render(code);
+        assert_eq!("<input type=\"text\" min=\"0\"/>", html);
+    }
 }
 
 #[cfg(test)]
@@ -176,5 +186,22 @@ mod code {
 
         let html = render(code);
         assert_eq!("<h1>Hello world. This is working, yay!</h1>", html);
+    }
+
+    #[test]
+    fn it_should_render_with_a_child_of_rsx() {
+        let text = " yay!";
+        let code = rsx! {
+          <div>
+            pre
+            {rsx! {
+              <h1>I am a heading</h1>
+            }}
+            post
+          </div>
+        };
+
+        let html = render(code);
+        assert_eq!("<div>pre<h1>I am a heading</h1>post</div>", html);
     }
 }

@@ -1,4 +1,5 @@
 use crate::dom::Attribute;
+use crate::dom::AttributeValue;
 use crate::dom::Child;
 use crate::dom::Node;
 use ::std::convert::Into;
@@ -103,11 +104,21 @@ impl Render {
     fn render_attributes(&mut self, attributes: Vec<Attribute>) -> Result {
         for attribute in attributes {
             match attribute.value {
-                Some(text) => {
+                AttributeValue::ImplicitFalse => { /* Skip */ }
+                AttributeValue::ImplicitTrue => {
+                    write!(self.buffer, " {}", attribute.key)?;
+                }
+                AttributeValue::Text(text) => {
                     write!(self.buffer, " {}=\"{}\"", attribute.key, text)?;
                 }
-                None => {
-                    write!(self.buffer, " {}", attribute.key)?;
+                AttributeValue::UnsignedInteger(num) => {
+                    write!(self.buffer, " {}=\"{}\"", attribute.key, num)?;
+                }
+                AttributeValue::SignedInteger(num) => {
+                    write!(self.buffer, " {}=\"{}\"", attribute.key, num)?;
+                }
+                AttributeValue::Float(num) => {
+                    write!(self.buffer, " {}=\"{}\"", attribute.key, num)?;
                 }
             }
         }

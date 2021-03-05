@@ -28,3 +28,4 @@
   * Output - Optimise what is laid out.
     * Attributes use a static list of key=value where possible.
     * Nodes use a static list of nodes where possible.
+    * The whole _'Node & Child'_ thing needs to be rethought.

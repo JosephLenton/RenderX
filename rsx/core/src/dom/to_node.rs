@@ -5,6 +5,7 @@ pub trait ToNode {
 }
 
 impl ToNode for Node {
+    #[inline(always)]
     fn to_node(self) -> Self {
         self
     }

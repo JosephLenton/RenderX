@@ -6,6 +6,7 @@ pub trait ToChild {
 }
 
 impl ToChild for Child {
+    #[inline(always)]
     fn to_child(self) -> Self {
         self
     }
