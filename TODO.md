@@ -3,8 +3,8 @@
 # To reach Alpha ...
 
   * Components
-
-  * Using code as a child. i.e. the `{nodes}` in `<div>{nodes}</div>`
+  * Be able to use `classnames`. i.e. `class={base_class.el("form")}`
+  - Using code as a child. i.e. the `{nodes}` in `<div>{nodes}</div>`
 
   * Attributes
     - Values, i.e. the `value` in `<div key="value" />`

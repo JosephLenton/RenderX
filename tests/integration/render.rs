@@ -9,21 +9,19 @@ mod doctype {
 
     #[test]
     fn it_should_render_doctype_html() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <!doctype html>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<!doctype html>", html);
     }
 
     #[test]
     fn it_should_preserve_doctype_capitalisation() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <!DoCtYpE html>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<!DoCtYpE html>", html);
     }
 }
@@ -35,21 +33,19 @@ mod comments {
 
     #[test]
     fn it_should_render_empty_comments() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <!-- -->
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<!-- -->", html);
     }
 
     #[test]
     fn it_should_render_comments_containing_strings() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <!-- "this is a comment" -->
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<!-- this is a comment -->", html);
     }
 }
@@ -61,35 +57,32 @@ mod fragments {
 
     #[test]
     fn it_should_render_empty_nodes_as_an_empty_string() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <></>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("", html);
     }
 
     #[test]
     fn it_should_render_empty_self_closing_nodes_as_an_empty_string() {
-        let code = rsx! {
+        let html = render(& rsx! {
           </>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("", html);
     }
 
     #[test]
     fn it_should_render_the_contents_of_fragments() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <>
             <h1>This is a heading</h1>
             This is some text
             <hr />
           </>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<h1>This is a heading</h1>This is some text<hr/>", html);
     }
 }
@@ -101,53 +94,48 @@ mod nodes {
 
     #[test]
     fn it_should_render_self_closing_nodes_to_a_string() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <hr/>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<hr/>", html);
     }
 
     #[test]
     fn it_should_render_simple_nodes_to_a_string() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <div></div>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<div></div>", html);
     }
 
     #[test]
     fn it_should_render_simple_nodes_with_unquoted_strings() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <h1>
             hello world!
           </h1>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<h1>hello world!</h1>", html);
     }
 
     #[test]
     fn it_should_render_nodes_with_namespaces() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <namespace:blah></namespace:blah>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<namespace:blah></namespace:blah>", html);
     }
 
     #[test]
     fn it_should_render_nodes_with_hyphens() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <mr-map></mr-map>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<mr-map></mr-map>", html);
     }
 }
@@ -159,93 +147,84 @@ mod attributes {
 
     #[test]
     fn it_should_support_key_value_attributes_on_nodes() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <input type="text" />
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<input type=\"text\"/>", html);
     }
 
     #[test]
     fn it_should_render_attribute_if_option_some() {
         let input_type = Some("text");
-        let code = rsx! {
+        let html = render(& rsx! {
           <input type={input_type} />
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<input type=\"text\"/>", html);
     }
 
     #[test]
     fn it_should_not_render_attribute_if_option_none() {
         let input_type: Option<&'static str> = None;
-        let code = rsx! {
+        let html = render(& rsx! {
           <input type={input_type} />
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<input/>", html);
     }
 
     #[test]
     fn it_should_support_key_value_as_number() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <input type="text" min={0} />
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<input type=\"text\" min=\"0\"/>", html);
     }
 
     #[test]
     fn it_should_render_attribute_if_bool_true() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <button disabled={true}>Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<button disabled>Click me</button>", html);
     }
 
     #[test]
     fn it_should_not_render_attribute_if_bool_false() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <button disabled={false}>Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<button>Click me</button>", html);
     }
 
     #[test]
     fn it_should_support_hyphens_in_attribute_names() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <button data-name="MrButton">Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<button data-name=\"MrButton\">Click me</button>", html);
     }
 
     #[test]
     fn it_should_support_multiple_single_attribute_keys_in_a_row() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <button disabled inert>Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<button disabled inert>Click me</button>", html);
     }
 
     #[test]
     fn it_should_support_multiple_attribute_keys_with_hyphens_in_a_row() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <button data-js-track data-disabled data-name="MrButton">Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!(
             "<button data-js-track data-disabled data-name=\"MrButton\">Click me</button>",
             html
@@ -254,11 +233,10 @@ mod attributes {
 
     #[test]
     fn it_should_support_text_literals_for_attribute_names() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <button "disabled" "data-name"="MrButton" "🌧️"="❤️">Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!(
             "<button disabled data-name=\"MrButton\" 🌧️=\"❤️\">Click me</button>",
             html
@@ -268,22 +246,20 @@ mod attributes {
     #[test]
     fn it_should_render_keys_using_code() {
         let key = "min";
-        let code = rsx! {
+        let html = render(& rsx! {
           <input type="text" {key}={0} />
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<input type=\"text\" min=\"0\"/>", html);
     }
 
     #[test]
     fn it_should_render_solo_keys_using_code() {
         let attr = "disabled";
-        let code = rsx! {
+        let html = render(& rsx! {
           <button {attr}>Click me</button>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<button disabled>Click me</button>", html);
     }
 }
@@ -295,32 +271,30 @@ mod code {
 
     #[test]
     fn it_should_render_the_result_of_an_expression_returning_an_str() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <h1>{"Hello"}</h1>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<h1>Hello</h1>", html);
     }
 
     #[test]
     fn it_should_render_with_str_variables() {
         let text = " yay!";
-        let code = rsx! {
+        let html = render(& rsx! {
           <h1>
             {"Hello world. "}
             This is working,
             {text}
           </h1>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<h1>Hello world. This is working, yay!</h1>", html);
     }
 
     #[test]
     fn it_should_render_with_a_child_of_rsx() {
-        let code = rsx! {
+        let html = render(& rsx! {
           <div>
             pre
             {rsx! {
@@ -328,9 +302,8 @@ mod code {
             }}
             post
           </div>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<div>pre<h1>I am a heading</h1>post</div>", html);
     }
 
@@ -338,11 +311,10 @@ mod code {
     fn it_should_render_with_code_providing_component_name() {
         let el = "span";
 
-        let code = rsx! {
+        let html = render(& rsx! {
           <{el}/>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<span/>", html);
     }
 
@@ -350,11 +322,10 @@ mod code {
     fn it_should_render_with_code_name_and_code_closing_tag() {
         let el = "span";
 
-        let code = rsx! {
+        let html = render(& rsx! {
           <{el}></{el}>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<span></span>", html);
     }
 
@@ -362,11 +333,10 @@ mod code {
     fn it_should_render_with_code_name_and_empty_closing_tag() {
         let el = "span";
 
-        let code = rsx! {
+        let html = render(& rsx! {
           <{el}></{}>
-        };
+        });
 
-        let html = render(code);
         assert_eq!("<span></span>", html);
     }
 }

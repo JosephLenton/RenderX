@@ -6,7 +6,7 @@ use ::std::convert::Into;
 use ::std::fmt::Result;
 use ::std::fmt::Write;
 
-pub fn render(node: Node) -> String {
+pub fn render(node: &Node) -> String {
     let mut render = Render::new();
     render.render(node);
     render.into()
@@ -24,11 +24,11 @@ impl Render {
         }
     }
 
-    pub fn render(&mut self, node: Node) -> Result {
+    pub fn render(&mut self, node: &Node) -> Result {
         self.render_node(node)
     }
 
-    fn render_node(&mut self, node: Node) -> Result {
+    fn render_node(&mut self, node: &Node) -> Result {
         match node {
             Node::Empty => {}
             Node::Doctype { name, attributes } => {
@@ -77,7 +77,7 @@ impl Render {
         Ok(())
     }
 
-    fn render_doctype_attributes(&mut self, maybe_attributes: Option<Vec<Attribute>>) -> Result {
+    fn render_doctype_attributes(&mut self, maybe_attributes: &Option<Vec<Attribute>>) -> Result {
         match maybe_attributes {
             Some(attributes) => {
                 for attribute in attributes {
@@ -90,18 +90,18 @@ impl Render {
         Ok(())
     }
 
-    fn render_doctype_attribute(&mut self, attribute: Attribute) -> Result {
+    fn render_doctype_attribute(&mut self, attribute: &Attribute) -> Result {
         write!(self.buffer, " {}", attribute.key)
     }
 
-    fn render_maybe_attributes(&mut self, maybe_attributes: Option<Vec<Attribute>>) -> Result {
+    fn render_maybe_attributes(&mut self, maybe_attributes: &Option<Vec<Attribute>>) -> Result {
         match maybe_attributes {
             Some(attributes) => self.render_attributes(attributes),
             None => Ok(()),
         }
     }
 
-    fn render_attributes(&mut self, attributes: Vec<Attribute>) -> Result {
+    fn render_attributes(&mut self, attributes: &Vec<Attribute>) -> Result {
         for attribute in attributes {
             match attribute.value {
                 AttributeValue::ImplicitFalse => { /* Skip */ }
@@ -126,14 +126,14 @@ impl Render {
         Ok(())
     }
 
-    fn render_maybe_nodes(&mut self, maybe_nodes: Option<Vec<Node>>) -> Result {
+    fn render_maybe_nodes(&mut self, maybe_nodes: &Option<Vec<Node>>) -> Result {
         match maybe_nodes {
             Some(nodes) => self.render_nodes(nodes),
             None => Ok(()),
         }
     }
 
-    fn render_nodes(&mut self, nodes: Vec<Node>) -> Result {
+    fn render_nodes(&mut self, nodes: &Vec<Node>) -> Result {
         for node in nodes {
             self.render_node(node)?;
         }
@@ -141,14 +141,14 @@ impl Render {
         Ok(())
     }
 
-    fn render_maybe_child(&mut self, maybe_child: Option<Child>) -> Result {
+    fn render_maybe_child(&mut self, maybe_child: &Option<Child>) -> Result {
         match maybe_child {
             Some(child) => self.render_child(child),
             None => Ok(()),
         }
     }
 
-    fn render_child(&mut self, child: Child) -> Result {
+    fn render_child(&mut self, child: &Child) -> Result {
         match child {
             Child::None => Ok(()),
             Child::Nodes { nodes } => self.render_nodes(nodes),
