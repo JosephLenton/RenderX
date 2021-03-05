@@ -5,6 +5,7 @@ pub type Result<N> = ::std::result::Result<N, Error>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Error {
+    ExpectedName,
     EmptyMacroStreamGiven,
     UnexpectedStartingInput,
     UnexpectedToken,

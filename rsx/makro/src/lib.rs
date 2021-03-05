@@ -12,6 +12,7 @@ pub fn rsx(stream: TokenStream) -> TokenStream {
 
 fn display_error(err: Error) -> TokenStream {
     match err {
+        Error::ExpectedName => panic!("Internal error; expected parsing a name (this should never be visible)"),
         Error::EmptyMacroStreamGiven => panic!("Empty rsx given"),
         Error::UnexpectedStartingInput => panic!("HTML doesn't start with a node"),
         Error::UnexpectedToken => panic!("Unexpect token"),

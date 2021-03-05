@@ -130,6 +130,26 @@ mod nodes {
         let html = render(code);
         assert_eq!("<h1>hello world!</h1>", html);
     }
+
+    #[test]
+    fn it_should_render_nodes_with_namespaces() {
+        let code = rsx! {
+          <namespace:blah></namespace:blah>
+        };
+
+        let html = render(code);
+        assert_eq!("<namespace:blah></namespace:blah>", html);
+    }
+
+    #[test]
+    fn it_should_render_nodes_with_hyphens() {
+        let code = rsx! {
+          <mr-map></mr-map>
+        };
+
+        let html = render(code);
+        assert_eq!("<mr-map></mr-map>", html);
+    }
 }
 
 #[cfg(test)]
@@ -210,16 +230,6 @@ mod attributes {
     }
 
     #[test]
-    fn it_should_support_hyphens_before_attribute_keys() {
-        let code = rsx! {
-          <button --data-name="MrButton">Click me</button>
-        };
-
-        let html = render(code);
-        assert_eq!("<button --data-name=\"MrButton\">Click me</button>", html);
-    }
-
-    #[test]
     fn it_should_support_multiple_single_attribute_keys_in_a_row() {
         let code = rsx! {
           <button disabled inert>Click me</button>
@@ -246,7 +256,7 @@ mod attributes {
         };
 
         let html = render(code);
-        assert_eq!("<button disabled data-name=\"MrButton\" \"🌧️\"=\"❤️\">Click me</button>", html);
+        assert_eq!("<button disabled data-name=\"MrButton\" 🌧️=\"❤️\">Click me</button>", html);
     }
 }
 

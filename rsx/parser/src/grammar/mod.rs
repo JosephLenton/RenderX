@@ -4,6 +4,7 @@ use crate::ast::Node;
 use crate::error::Error;
 use crate::error::Result;
 
+use ::proc_macro2::Spacing;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;
@@ -14,6 +15,7 @@ use self::token_iterator::TokenIterator;
 mod micro_vec;
 use self::micro_vec::MicroVec;
 
+const COLON: char = ':';
 const EXCLAMATION_MARK: char = '!';
 const HYPHEN: char = '-';
 const LEFT_ANGLE: char = '<';
@@ -143,7 +145,7 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     }
 
     // Real tags from here on. i.e. <div></div> and <hr />
-    let opening_tag_name = input.chomp_ident()?;
+    let opening_tag_name = parse_name(input)?;
 
     let attributes = parse_attributes(input)?;
 
@@ -162,7 +164,7 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
 
     // Closing Tag.
     input.chomp_puncts(&[LEFT_ANGLE, FORWARD_SLASH])?;
-    let closing_tag_name = input.chomp_ident()?;
+    let closing_tag_name = parse_name(input)?;
     input.chomp_punct(RIGHT_ANGLE)?;
 
     if closing_tag_name != opening_tag_name {
@@ -194,7 +196,7 @@ fn parse_attributes(input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>>
 }
 
 fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
-    let maybe_key = parse_attribute_key(input)?;
+    let maybe_key = parse_maybe_name(input)?;
     if maybe_key.is_none() {
         return Ok(None);
     }
@@ -209,7 +211,22 @@ fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
     Ok(Some(Attribute { key, value: None }))
 }
 
-fn parse_attribute_key(input: &mut TokenIterator) -> Result<Option<String>> {
+fn parse_attribute_value(input: &mut TokenIterator) -> Result<AttributeValue> {
+    if input.is_brace_group() {
+        Ok(AttributeValue::Code(input.chomp_brace_group()?))
+    } else {
+        Ok(AttributeValue::Text(input.chomp_literal()?))
+    }
+}
+
+fn parse_name(input: &mut TokenIterator) -> Result<String> {
+    match parse_maybe_name(input)? {
+        Some(name) => Ok(name),
+        None => Err(Error::ExpectedName),
+    }
+}
+
+fn parse_maybe_name(input: &mut TokenIterator) -> Result<Option<String>> {
     let mut maybe_key: Option<String> = None;
 
     if input.is_next_literal() {
@@ -217,28 +234,30 @@ fn parse_attribute_key(input: &mut TokenIterator) -> Result<Option<String>> {
     }
 
     loop {
-        while input.is_next_punct(HYPHEN) {
-            match maybe_key.as_mut() {
-                Some(key) => write!(key, "{}", input.chomp()?)?,
-                None => maybe_key = Some(input.chomp()?.to_string()),
-            }
-        }
-
         if input.is_next_ident() {
+            let next = input.chomp()?;
+
             match maybe_key.as_mut() {
-                Some(key) => write!(key, "{}", input.chomp()?)?,
-                None => maybe_key = Some(input.chomp()?.to_string()),
+                Some(key) => write!(key, "{}", next)?,
+                None => maybe_key = Some(next.to_string()),
             }
         }
 
-        // Check if there is a `-name` ahead of us.
+        // Check if there is `-name` or `:name` ahead of us.
         // If there is we will capture that too.
         let mut i = 0;
-        while input.is_lookahead_punct(HYPHEN, i) {
+        while input.is_lookahead_punct(HYPHEN, i) || input.is_lookahead_punct(COLON, i) {
             i += 1;
         }
 
         if i > 0 && input.is_lookahead_ident(i) {
+            while input.is_next_punct(HYPHEN) || input.is_next_punct(COLON) {
+                match maybe_key.as_mut() {
+                    Some(key) => write!(key, "{}", input.chomp()?)?,
+                    None => maybe_key = Some(input.chomp()?.to_string()),
+                }
+            }
+
             continue;
         }
 
@@ -246,14 +265,6 @@ fn parse_attribute_key(input: &mut TokenIterator) -> Result<Option<String>> {
     }
 
     Ok(maybe_key)
-}
-
-fn parse_attribute_value(input: &mut TokenIterator) -> Result<AttributeValue> {
-    if input.is_brace_group() {
-        Ok(AttributeValue::Code(input.chomp_brace_group()?))
-    } else {
-        Ok(AttributeValue::Text(input.chomp_literal()?))
-    }
 }
 
 /// Finds and grabs all child nodes, and then returns them in a Vec.
@@ -583,6 +594,16 @@ mod parse {
         };
 
         assert_eq_nodes(code, expected)
+    }
+
+    #[test]
+    fn it_should_not_support_hyphens_before_attribute_keys() {
+        let code = quote! {
+          <button --data-name="MrButton">Click me</button>
+        };
+
+        let received = parse(code);
+        assert_eq!(received.err().unwrap(), Error::UnexpectedToken);
     }
 
     #[test]
