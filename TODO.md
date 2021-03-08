@@ -3,6 +3,15 @@
 # To reach Alpha ...
 
   * Components
+    * Component functions
+    * Props
+
+  * Client Side Updates
+    * Spike; create a crate that replicates the SPA update idea, and does a performance check.
+      * https://github.com/krausest/js-framework-benchmark
+      * https://krausest.github.io/js-framework-benchmark/2020/table_chrome_87.0.4280.66.html
+
+  * State Management
   * Be able to use `classnames`. i.e. `class={base_class.el("form")}`
   - Using code as a child. i.e. the `{nodes}` in `<div>{nodes}</div>`
 
@@ -27,6 +36,8 @@
       * Attribute values???
 
   * Output - Optimise what is laid out.
+    * Allow overriding the path to the node (the `::renderx::dom::Node` stuff), so another library can change it.
+      * This can be done by allowing the path to be set via an environmental setting in Cargo, and optionally picked up in `output.rs`.
     * Attributes use a static list of key=value where possible.
     * Nodes use a static list of nodes where possible.
     * The whole _'Node & Child'_ thing needs to be rethought.
