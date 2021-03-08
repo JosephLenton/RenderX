@@ -2,13 +2,17 @@ use crate::dom::Attribute;
 use crate::dom::AttributeValue;
 use crate::dom::Child;
 use crate::dom::Node;
+use ::std::convert::AsRef;
 use ::std::convert::Into;
 use ::std::fmt::Result;
 use ::std::fmt::Write;
 
-pub fn render(node: &Node) -> String {
+pub fn render<N>(node: N) -> String
+where
+    N: AsRef<Node>,
+{
     let mut render = Render::new();
-    render.render(node);
+    render.render(node.as_ref());
     render.into()
 }
 

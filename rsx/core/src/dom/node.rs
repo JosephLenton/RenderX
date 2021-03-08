@@ -1,6 +1,7 @@
 use crate::dom::Attribute;
 use crate::dom::Child;
 use crate::dom::ToChild;
+use ::std::convert::AsRef;
 use ::std::convert::Into;
 
 /// The contents of the Node are all doc-hidden.
@@ -69,6 +70,18 @@ impl Node {
 
     pub fn new_self_closing(name: &'static str, attributes: Option<Vec<Attribute>>) -> Self {
         Self::SelfClosing { name, attributes }
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl AsRef<Node> for Node {
+    fn as_ref(&self) -> &Self {
+        self
     }
 }
 
