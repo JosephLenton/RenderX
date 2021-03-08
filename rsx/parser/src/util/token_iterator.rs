@@ -1,4 +1,3 @@
-use crate::error::Error;
 use ::lookahead::lookahead;
 use ::lookahead::Lookahead;
 use ::proc_macro2::Delimiter;
@@ -6,6 +5,13 @@ use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Debug;
 use ::std::iter::Iterator;
+
+pub enum TokenIteratorError {
+    ChompOnEmptyNode,
+    UnexpectedToken,
+}
+
+pub type Result<N> = ::std::result::Result<N, TokenIteratorError>;
 
 #[derive(Clone, Debug)]
 pub struct TokenIterator<I: Iterator<Item = TokenTree> + Clone + Debug> {
@@ -66,7 +72,7 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         false
     }
 
-    pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String, Error> {
+    pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String> {
         if let Some(TokenTree::Ident(_)) = self.peek() {
             self.chomp_ident()
         } else {
@@ -94,15 +100,15 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
     /// Moves forward one item.
     ///
     /// Panics if called when there is no next item.
-    pub fn chomp(&mut self) -> Result<TokenTree, Error> {
+    pub fn chomp(&mut self) -> Result<TokenTree> {
         if self.is_empty() {
-            return Err(Error::ChompOnEmptyNode);
+            return Err(TokenIteratorError::ChompOnEmptyNode);
         }
 
         Ok(self.iter.next().unwrap())
     }
 
-    pub fn chomp_ident(&mut self) -> Result<String, Error> {
+    pub fn chomp_ident(&mut self) -> Result<String> {
         if let Some(TokenTree::Ident(ident)) = self.peek() {
             let ident_string = ident.to_string();
             self.chomp()?;
@@ -110,10 +116,10 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
             return Ok(ident_string);
         }
 
-        Err(Error::UnexpectedToken)
+        Err(TokenIteratorError::UnexpectedToken)
     }
 
-    pub fn chomp_literal(&mut self) -> Result<String, Error> {
+    pub fn chomp_literal(&mut self) -> Result<String> {
         if let Some(TokenTree::Literal(literal)) = self.peek() {
             let mut literal_string = literal.to_string();
             if literal_string.starts_with('"') {
@@ -125,19 +131,19 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
             return Ok(literal_string);
         }
 
-        Err(Error::UnexpectedToken)
+        Err(TokenIteratorError::UnexpectedToken)
     }
 
-    pub fn chomp_punct(&mut self, c: char) -> Result<(), Error> {
+    pub fn chomp_punct(&mut self, c: char) -> Result<()> {
         if self.is_next_punct(c) {
             self.chomp()?;
             Ok(())
         } else {
-            Err(Error::UnexpectedToken)
+            Err(TokenIteratorError::UnexpectedToken)
         }
     }
 
-    pub fn chomp_puncts(&mut self, cs: &[char]) -> Result<(), Error> {
+    pub fn chomp_puncts(&mut self, cs: &[char]) -> Result<()> {
         for c in cs {
             self.chomp_punct(*c)?;
         }
@@ -157,20 +163,20 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         false
     }
 
-    pub fn chomp_brace_group(&mut self) -> Result<TokenStream, Error> {
+    pub fn chomp_brace_group(&mut self) -> Result<TokenStream> {
         match self.chomp()? {
             TokenTree::Group(group) => {
                 if group.delimiter() == Delimiter::Brace {
                     Ok(group.stream())
                 } else {
-                    Err(Error::UnexpectedToken)
+                    Err(TokenIteratorError::UnexpectedToken)
                 }
             }
-            _ => Err(Error::UnexpectedToken),
+            _ => Err(TokenIteratorError::UnexpectedToken),
         }
     }
 
-    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String, Error> {
+    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String> {
         if let TokenTree::Group(group) = self.chomp()? {
             if group.delimiter() == delimiter {
                 let mut group_string = group.to_string();
@@ -184,7 +190,7 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
             }
         }
 
-        Err(Error::UnexpectedToken)
+        Err(TokenIteratorError::UnexpectedToken)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::token_stream::token_stream_eq;
+use crate::util::token_stream_eq;
 use ::proc_macro2::TokenStream;
 
 #[derive(Clone, Debug)]

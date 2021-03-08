@@ -1,46 +1,45 @@
-use ::parser::parse;
-use ::parser::Error;
+use ::parser::rsx;
 use ::proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn rsx(stream: TokenStream) -> TokenStream {
-    match parse(stream.into()) {
-        Err(err) => display_error_rsx(err),
+    match rsx::parse(stream.into()) {
+        Err(err) => display_rsx_error(err),
         Ok(code) => code.into(),
     }
 }
 
 #[proc_macro_attribute]
 pub fn component(attr: TokenStream, stream: TokenStream) -> TokenStream {
-    match parse(stream.into()) {
-        Err(err) => display_error_rsx(err),
+    match rsx::parse(stream.into()) {
+        Err(err) => display_rsx_error(err),
         Ok(code) => code.into(),
     }
 }
 
-fn display_error_rsx(err: Error) -> TokenStream {
+fn display_rsx_error(err: rsx::Error) -> TokenStream {
     match err {
-        Error::MismatchedClosingTagCode => {
+        rsx::Error::MismatchedClosingTagCode => {
             panic!("Mismatched closing code, note you can use `</{}>` for simplicity.")
         }
-        Error::MismatchedClosingTagName => panic!("Open and closing tag names don't match"),
-        Error::ExpectedName => {
+        rsx::Error::MismatchedClosingTagName => panic!("Open and closing tag names don't match"),
+        rsx::Error::ExpectedName => {
             panic!("Internal error; expected parsing a name (this should never be visible)")
         }
-        Error::EmptyMacroStreamGiven => panic!("Empty rsx given"),
-        Error::UnexpectedStartingInput => panic!("HTML doesn't start with a node"),
-        Error::UnexpectedToken => panic!("Unexpect token"),
-        Error::ExcessNodesFound => panic!("Excess html found after the initial html"),
-        Error::MoreTokensExpected => {
+        rsx::Error::EmptyMacroStreamGiven => panic!("Empty rsx given"),
+        rsx::Error::UnexpectedStartingInput => panic!("HTML doesn't start with a node"),
+        rsx::Error::UnexpectedToken => panic!("Unexpect token"),
+        rsx::Error::ExcessNodesFound => panic!("Excess html found after the initial html"),
+        rsx::Error::MoreTokensExpected => {
             panic!("Expected more tokens; could be missing a closing tag?")
         }
-        Error::PeekOnEmptyNode => {
+        rsx::Error::PeekOnEmptyNode => {
             panic!("Internal error; peeked on an empty node (this should never be visible)")
         }
-        Error::ChompOnEmptyNode => {
+        rsx::Error::ChompOnEmptyNode => {
             panic!("Internal error; chomped on an empty node (this should never be visible)")
         }
-        Error::FmtError(fmt) => panic!(
+        rsx::Error::FmtError(fmt) => panic!(
             "Internal error; failed writing to string (this should never be visible), {}",
             fmt
         ),

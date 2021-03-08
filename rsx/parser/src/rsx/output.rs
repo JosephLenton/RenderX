@@ -1,9 +1,9 @@
+use crate::rsx::ast::Attribute;
+use crate::rsx::ast::Node;
+use crate::rsx::ast::Value;
+
 use ::proc_macro2::TokenStream;
 use ::quote::quote;
-
-use crate::ast::Attribute;
-use crate::ast::Node;
-use crate::ast::Value;
 
 pub fn build(ast: Node) -> TokenStream {
     visit_node(ast)

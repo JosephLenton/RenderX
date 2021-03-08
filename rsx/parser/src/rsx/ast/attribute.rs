@@ -1,4 +1,4 @@
-use crate::ast::Value;
+use crate::rsx::ast::Value;
 
 #[derive(Clone, Debug)]
 pub struct Attribute {

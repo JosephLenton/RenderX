@@ -1,6 +1,6 @@
-use crate::ast::Attribute;
-use crate::ast::Value;
-use crate::token_stream::token_stream_eq;
+use crate::rsx::ast::Attribute;
+use crate::rsx::ast::Value;
+use crate::util::token_stream_eq;
 use ::proc_macro2::TokenStream;
 
 #[derive(Clone, Debug)]

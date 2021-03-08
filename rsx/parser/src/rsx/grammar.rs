@@ -1,21 +1,17 @@
-use crate::ast::Attribute;
-use crate::ast::Node;
-use crate::ast::Value;
-use crate::error::Error;
-use crate::error::Result;
-use crate::token_stream::flatten_non_braces;
+use crate::rsx::ast::Attribute;
+use crate::rsx::ast::Node;
+use crate::rsx::ast::Value;
+use crate::rsx::error::Error;
+use crate::rsx::error::Result;
+use crate::util::flatten_non_braces;
+use crate::util::token_stream_eq;
+use crate::util::MicroVec;
+use crate::util::TokenIterator;
 
-use crate::token_stream::token_stream_eq;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;
 use ::std::vec::IntoIter;
-
-mod token_iterator;
-use self::token_iterator::TokenIterator;
-
-mod micro_vec;
-use self::micro_vec::MicroVec;
 
 const COLON: char = ':';
 const EXCLAMATION_MARK: char = '!';
