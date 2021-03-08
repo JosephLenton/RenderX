@@ -5,21 +5,35 @@ use ::proc_macro::TokenStream;
 #[proc_macro]
 pub fn rsx(stream: TokenStream) -> TokenStream {
     match parse(stream.into()) {
-        Err(err) => display_error(err),
+        Err(err) => display_error_rsx(err),
         Ok(code) => code.into(),
     }
 }
 
-fn display_error(err: Error) -> TokenStream {
+#[proc_macro_attribute]
+pub fn component(attr: TokenStream, stream: TokenStream) -> TokenStream {
+    match parse(stream.into()) {
+        Err(err) => display_error_rsx(err),
+        Ok(code) => code.into(),
+    }
+}
+
+fn display_error_rsx(err: Error) -> TokenStream {
     match err {
-        Error::MismatchedClosingTagCode => panic!("Mismatched closing code, note you can use `</{}>` for simplicity."),
+        Error::MismatchedClosingTagCode => {
+            panic!("Mismatched closing code, note you can use `</{}>` for simplicity.")
+        }
         Error::MismatchedClosingTagName => panic!("Open and closing tag names don't match"),
-        Error::ExpectedName => panic!("Internal error; expected parsing a name (this should never be visible)"),
+        Error::ExpectedName => {
+            panic!("Internal error; expected parsing a name (this should never be visible)")
+        }
         Error::EmptyMacroStreamGiven => panic!("Empty rsx given"),
         Error::UnexpectedStartingInput => panic!("HTML doesn't start with a node"),
         Error::UnexpectedToken => panic!("Unexpect token"),
         Error::ExcessNodesFound => panic!("Excess html found after the initial html"),
-        Error::MoreTokensExpected => panic!("Expected more tokens; could be missing a closing tag?"),
+        Error::MoreTokensExpected => {
+            panic!("Expected more tokens; could be missing a closing tag?")
+        }
         Error::PeekOnEmptyNode => {
             panic!("Internal error; peeked on an empty node (this should never be visible)")
         }
