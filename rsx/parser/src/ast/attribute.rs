@@ -1,6 +1,4 @@
 use crate::ast::Value;
-use crate::token_stream_compare::token_stream_eq;
-use ::proc_macro2::TokenStream;
 
 #[derive(Clone, Debug)]
 pub struct Attribute {

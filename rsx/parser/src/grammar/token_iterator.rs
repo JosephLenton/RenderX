@@ -2,24 +2,25 @@ use crate::error::Error;
 use ::lookahead::lookahead;
 use ::lookahead::Lookahead;
 use ::proc_macro2::Delimiter;
-use ::proc_macro2::Punct;
-use ::proc_macro2::Spacing;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
+use ::std::fmt::Debug;
 use ::std::iter::Iterator;
-use ::std::vec::IntoIter;
 
 #[derive(Clone, Debug)]
-pub struct TokenIterator {
-    iter: Lookahead<IntoIter<TokenTree>>,
+pub struct TokenIterator<I: Iterator<Item = TokenTree> + Clone + Debug> {
+    iter: Lookahead<I>,
 }
 
-impl TokenIterator {
-    pub fn new(stream: TokenStream) -> Self {
-        let new_stream = flatten(stream);
-
+impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
+    pub fn new<IntoI>(stream: IntoI) -> Self
+    where
+        IntoI: IntoIterator<Item = TokenTree, IntoIter = I>,
+    {
+        let iterator = stream.into_iter();
         Self {
-            iter: lookahead(new_stream.into_iter()),
+            iter: lookahead(iterator),
+            // iter: lookahead(Box::new(stream.into_iter())),
         }
     }
 
@@ -184,93 +185,6 @@ impl TokenIterator {
         }
 
         Err(Error::UnexpectedToken)
-    }
-}
-
-fn flatten(stream: TokenStream) -> Vec<TokenTree> {
-    let mut new_stream = vec![];
-    flatten_into(&mut new_stream, stream);
-    new_stream
-}
-
-fn flatten_into(new_stream: &mut Vec<TokenTree>, stream: TokenStream) {
-    for item in stream {
-        match item {
-            TokenTree::Group(group) => {
-                let delimiter = group.delimiter();
-                if delimiter != Delimiter::Brace {
-                    let (opening_char, closing_char) = delimiter_chars(delimiter);
-
-                    new_stream.push(TokenTree::Punct(Punct::new(opening_char, Spacing::Alone)));
-                    flatten_into(new_stream, group.stream());
-                    new_stream.push(TokenTree::Punct(Punct::new(closing_char, Spacing::Alone)));
-
-                    continue;
-                }
-
-                new_stream.push(TokenTree::Group(group));
-            }
-            _ => new_stream.push(item),
-        }
-    }
-}
-
-fn delimiter_chars(delimiter: Delimiter) -> (char, char) {
-    match delimiter {
-        Delimiter::Bracket => ('[', ']'),
-        Delimiter::Parenthesis => ('(', ')'),
-        Delimiter::Brace => ('{', '}'),
-        Delimiter::None => ('\0', '\0'),
-    }
-}
-
-#[cfg(test)]
-mod flatten {
-    use super::*;
-    use ::quote::quote;
-
-    #[test]
-    fn it_should_flatten_parenthesis_groups() {
-        let tokens = quote! {
-            a ( x y z ) c
-        };
-
-        let mut input = TokenIterator::new(tokens);
-        assert!(input.chomp().ok().unwrap().to_string() == "a");
-        assert!(input.chomp().ok().unwrap().to_string() == "(");
-        assert!(input.chomp().ok().unwrap().to_string() == "x");
-        assert!(input.chomp().ok().unwrap().to_string() == "y");
-        assert!(input.chomp().ok().unwrap().to_string() == "z");
-        assert!(input.chomp().ok().unwrap().to_string() == ")");
-        assert!(input.chomp().ok().unwrap().to_string() == "c");
-    }
-
-    #[test]
-    fn it_should_flatten_square_bracket_groups() {
-        let tokens = quote! {
-            a [ x y z ] c
-        };
-
-        let mut input = TokenIterator::new(tokens);
-        assert!(input.chomp().ok().unwrap().to_string() == "a");
-        assert!(input.chomp().ok().unwrap().to_string() == "[");
-        assert!(input.chomp().ok().unwrap().to_string() == "x");
-        assert!(input.chomp().ok().unwrap().to_string() == "y");
-        assert!(input.chomp().ok().unwrap().to_string() == "z");
-        assert!(input.chomp().ok().unwrap().to_string() == "]");
-        assert!(input.chomp().ok().unwrap().to_string() == "c");
-    }
-
-    #[test]
-    fn it_should_not_flatten_brace_groups() {
-        let tokens = quote! {
-            a { x y z } c
-        };
-
-        let mut input = TokenIterator::new(tokens);
-        assert!(input.chomp().ok().unwrap().to_string() == "a");
-        assert!(input.chomp().ok().unwrap().to_string() == "{ x y z }");
-        assert!(input.chomp().ok().unwrap().to_string() == "c");
     }
 }
 

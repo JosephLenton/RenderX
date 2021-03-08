@@ -3,11 +3,13 @@ use crate::ast::Node;
 use crate::ast::Value;
 use crate::error::Error;
 use crate::error::Result;
+use crate::token_stream::flatten_non_braces;
 
-use crate::token_stream_compare::token_stream_eq;
+use crate::token_stream::token_stream_eq;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;
+use ::std::vec::IntoIter;
 
 mod token_iterator;
 use self::token_iterator::TokenIterator;
@@ -27,6 +29,8 @@ static COMMENT_CLOSING_LOOKAHEAD: &'static [char] = &[HYPHEN, HYPHEN, RIGHT_ANGL
 static TAG_OPENING_LOOKAHEAD: &'static [char] = &[LEFT_ANGLE];
 static TAG_CLOSING_LOOKAHEAD: &'static [char] = &[LEFT_ANGLE, FORWARD_SLASH];
 
+type TokenIteratorVec = TokenIterator<IntoIter<TokenTree>>;
+
 pub fn parse(stream: TokenStream) -> Result<Node> {
     parse_root(stream)
 }
@@ -36,7 +40,8 @@ fn parse_root(stream: TokenStream) -> Result<Node> {
         return Err(Error::EmptyMacroStreamGiven);
     }
 
-    let mut input = TokenIterator::new(stream);
+    let flat_stream = flatten_non_braces(stream);
+    let mut input = TokenIterator::new(flat_stream);
     let node = parse_root_node(&mut input)?;
 
     if !input.is_empty() {
@@ -46,7 +51,7 @@ fn parse_root(stream: TokenStream) -> Result<Node> {
     Ok(node)
 }
 
-fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
+fn parse_root_node(input: &mut TokenIteratorVec) -> Result<Node> {
     let mut nodes = MicroVec::new();
 
     while !input.is_empty() {
@@ -61,7 +66,7 @@ fn parse_root_node(input: &mut TokenIterator) -> Result<Node> {
     }
 }
 
-fn parse_node(input: &mut TokenIterator) -> Result<Node> {
+fn parse_node(input: &mut TokenIteratorVec) -> Result<Node> {
     if input.is_next_punct(LEFT_ANGLE) {
         if input.is_lookahead_punct(EXCLAMATION_MARK, 1) {
             if input.is_lookahead_punct(HYPHEN, 2) {
@@ -79,7 +84,7 @@ fn parse_node(input: &mut TokenIterator) -> Result<Node> {
     }
 }
 
-fn parse_node_comment(input: &mut TokenIterator) -> Result<Node> {
+fn parse_node_comment(input: &mut TokenIteratorVec) -> Result<Node> {
     input.chomp_puncts(&[LEFT_ANGLE, EXCLAMATION_MARK, HYPHEN, HYPHEN])?;
 
     let children = parse_comment_children(input)?;
@@ -89,7 +94,7 @@ fn parse_node_comment(input: &mut TokenIterator) -> Result<Node> {
     Ok(Node::Comment { children })
 }
 
-fn parse_comment_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>> {
+fn parse_comment_children(input: &mut TokenIteratorVec) -> Result<Option<Vec<Node>>> {
     let mut maybe_children = None;
 
     loop {
@@ -114,7 +119,7 @@ fn parse_comment_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>
     }
 }
 
-fn parse_node_doctype(input: &mut TokenIterator) -> Result<Node> {
+fn parse_node_doctype(input: &mut TokenIteratorVec) -> Result<Node> {
     input.chomp_puncts(&[LEFT_ANGLE, EXCLAMATION_MARK])?;
     let name = parse_name(input)?;
     let attributes = parse_attributes(input)?;
@@ -123,7 +128,7 @@ fn parse_node_doctype(input: &mut TokenIterator) -> Result<Node> {
     Ok(Node::Doctype { name, attributes })
 }
 
-fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
+fn parse_node_tag(input: &mut TokenIteratorVec) -> Result<Node> {
     input.chomp_punct(LEFT_ANGLE)?;
 
     // parses </>
@@ -191,11 +196,11 @@ fn parse_node_tag(input: &mut TokenIterator) -> Result<Node> {
     })
 }
 
-fn parse_node_text(input: &mut TokenIterator) -> Result<Node> {
+fn parse_node_text(input: &mut TokenIteratorVec) -> Result<Node> {
     Ok(Node::Text(parse_text(input, &TAG_OPENING_LOOKAHEAD)?))
 }
 
-fn parse_attributes(input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>> {
+fn parse_attributes(input: &mut TokenIteratorVec) -> Result<Option<Vec<Attribute>>> {
     let mut maybe_attrs = None;
 
     while let Some(attribute) = parse_attribute(input)? {
@@ -208,7 +213,7 @@ fn parse_attributes(input: &mut TokenIterator) -> Result<Option<Vec<Attribute>>>
     Ok(maybe_attrs)
 }
 
-fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
+fn parse_attribute(input: &mut TokenIteratorVec) -> Result<Option<Attribute>> {
     let maybe_key = parse_maybe_name(input)?;
     if maybe_key.is_none() {
         return Ok(None);
@@ -224,7 +229,7 @@ fn parse_attribute(input: &mut TokenIterator) -> Result<Option<Attribute>> {
     Ok(Some(Attribute { key, value: None }))
 }
 
-fn parse_attribute_value(input: &mut TokenIterator) -> Result<Value> {
+fn parse_attribute_value(input: &mut TokenIteratorVec) -> Result<Value> {
     if input.is_brace_group() {
         Ok(Value::Code(input.chomp_brace_group()?))
     } else {
@@ -232,14 +237,14 @@ fn parse_attribute_value(input: &mut TokenIterator) -> Result<Value> {
     }
 }
 
-fn parse_name(input: &mut TokenIterator) -> Result<Value> {
+fn parse_name(input: &mut TokenIteratorVec) -> Result<Value> {
     match parse_maybe_name(input)? {
         Some(name) => Ok(name),
         None => Err(Error::ExpectedName),
     }
 }
 
-fn parse_maybe_name(input: &mut TokenIterator) -> Result<Option<Value>> {
+fn parse_maybe_name(input: &mut TokenIteratorVec) -> Result<Option<Value>> {
     let mut maybe_key: Option<String> = None;
 
     if input.is_next_literal() {
@@ -287,7 +292,7 @@ fn parse_maybe_name(input: &mut TokenIterator) -> Result<Option<Value>> {
 /// Finds and grabs all child nodes, and then returns them in a Vec.
 /// `stopping_lookaheads` is for telling it what puncts to look for,
 /// to know to stop parsing. For a HTML tag this is `</`, and for a comment this is `-->`.
-fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>> {
+fn parse_children(input: &mut TokenIteratorVec) -> Result<Option<Vec<Node>>> {
     let mut maybe_children = None;
 
     loop {
@@ -308,7 +313,7 @@ fn parse_children(input: &mut TokenIterator) -> Result<Option<Vec<Node>>> {
     }
 }
 
-fn parse_text(input: &mut TokenIterator, stopping_lookaheads: &[char]) -> Result<String> {
+fn parse_text(input: &mut TokenIteratorVec, stopping_lookaheads: &[char]) -> Result<String> {
     let mut text = String::new();
     let mut last_spacing_rules = (false, false);
 

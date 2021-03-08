@@ -1,13 +1,12 @@
 use ::proc_macro2::TokenStream;
 
 mod ast;
-mod error;
+pub mod error;
 mod grammar;
 mod output;
-mod token_stream_compare;
+pub(crate) mod token_stream;
 
 use crate::error::Result;
-pub use crate::error::*;
 
 pub fn parse(old_stream: TokenStream) -> Result<TokenStream> {
     let stream = TokenStream::from(old_stream);

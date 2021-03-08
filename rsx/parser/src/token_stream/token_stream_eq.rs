@@ -1,4 +1,3 @@
-use ::proc_macro2::Delimiter;
 use ::proc_macro2::Group;
 use ::proc_macro2::Ident;
 use ::proc_macro2::Literal;
@@ -6,7 +5,7 @@ use ::proc_macro2::Punct;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 
-pub(crate) fn token_stream_eq(a_stream: &TokenStream, b_stream: &TokenStream) -> bool {
+pub fn token_stream_eq(a_stream: &TokenStream, b_stream: &TokenStream) -> bool {
     match (a_stream.is_empty(), b_stream.is_empty()) {
         (true, true) => return true,
         (true, false) => return false,
@@ -32,7 +31,7 @@ pub(crate) fn token_stream_eq(a_stream: &TokenStream, b_stream: &TokenStream) ->
     a_item.is_none() && b_item.is_none()
 }
 
-pub(crate) fn token_tree_eq(a_token_tree: TokenTree, b_token_tree: TokenTree) -> bool {
+pub fn token_tree_eq(a_token_tree: TokenTree, b_token_tree: TokenTree) -> bool {
     match (a_token_tree, b_token_tree) {
         (TokenTree::Punct(a), TokenTree::Punct(b)) => punct_eq(a, b),
         (TokenTree::Ident(a), TokenTree::Ident(b)) => punct_ident(a, b),
@@ -42,18 +41,18 @@ pub(crate) fn token_tree_eq(a_token_tree: TokenTree, b_token_tree: TokenTree) ->
     }
 }
 
-pub(crate) fn punct_eq(a: Punct, b: Punct) -> bool {
+pub fn punct_eq(a: Punct, b: Punct) -> bool {
     a.as_char() == b.as_char() && a.spacing() == b.spacing()
 }
 
-pub(crate) fn punct_ident(a: Ident, b: Ident) -> bool {
+pub fn punct_ident(a: Ident, b: Ident) -> bool {
     a == b
 }
 
-pub(crate) fn punct_group(a: Group, b: Group) -> bool {
+pub fn punct_group(a: Group, b: Group) -> bool {
     a.delimiter() == b.delimiter() && token_stream_eq(&a.stream(), &b.stream())
 }
 
-pub(crate) fn punct_literal(a: Literal, b: Literal) -> bool {
+pub fn punct_literal(a: Literal, b: Literal) -> bool {
     format!("{}", a) == format!("{}", b)
 }
