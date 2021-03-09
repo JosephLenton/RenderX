@@ -1,6 +1,8 @@
 use ::lookahead::lookahead;
 use ::lookahead::Lookahead;
 use ::proc_macro2::Delimiter;
+use ::proc_macro2::Group;
+use ::proc_macro2::Ident;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Debug;
@@ -26,7 +28,6 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         let iterator = stream.into_iter();
         Self {
             iter: lookahead(iterator),
-            // iter: lookahead(Box::new(stream.into_iter())),
         }
     }
 
@@ -72,14 +73,6 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         false
     }
 
-    pub fn chomp_ident_or(&mut self, alt: &str) -> Result<String> {
-        if let Some(TokenTree::Ident(_)) = self.peek() {
-            self.chomp_ident()
-        } else {
-            Ok(alt.to_string())
-        }
-    }
-
     pub fn is_next_punct(&mut self, c: char) -> bool {
         self.is_lookahead_punct(c, 0)
     }
@@ -108,12 +101,9 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         Ok(self.iter.next().unwrap())
     }
 
-    pub fn chomp_ident(&mut self) -> Result<String> {
-        if let Some(TokenTree::Ident(ident)) = self.peek() {
-            let ident_string = ident.to_string();
-            self.chomp()?;
-
-            return Ok(ident_string);
+    pub fn chomp_ident(&mut self) -> Result<Ident> {
+        if let TokenTree::Ident(ident) = self.chomp()? {
+            return Ok(ident);
         }
 
         Err(TokenIteratorError::UnexpectedToken)
@@ -176,17 +166,10 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         }
     }
 
-    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<String> {
+    pub fn chomp_group(&mut self, delimiter: Delimiter) -> Result<Group> {
         if let TokenTree::Group(group) = self.chomp()? {
             if group.delimiter() == delimiter {
-                let mut group_string = group.to_string();
-                if group_string.starts_with('{') {
-                    group_string = group_string.as_str()[1..group_string.len() - 1]
-                        .trim()
-                        .to_string();
-                }
-
-                return Ok(group_string);
+                return Ok(group);
             }
         }
 

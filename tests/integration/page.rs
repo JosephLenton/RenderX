@@ -8,7 +8,7 @@ fn it_should_render_example_front_page() {
     const COPY_TITE: &'static str = "Example Page";
     const COPYRIGHT: &'static str = "Copyright Big Inc 2021";
 
-    let html = render(& rsx! {
+    let html = render(rsx! {
           <!doctype html>
           <html lang="en">
             <head>
