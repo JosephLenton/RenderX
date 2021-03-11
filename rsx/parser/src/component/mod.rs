@@ -16,3 +16,43 @@ pub fn parse(old_attrs: TokenStream, old_stream: TokenStream) -> Result<TokenStr
     let ast = grammar::parse(stream)?;
     Ok(output::build(ast))
 }
+
+#[cfg(test)]
+mod parse {
+    use super::*;
+    use ::quote::quote;
+
+    #[test]
+    fn it_should_output_component_markup() -> Result<()> {
+        let output = parse(
+            quote! {},
+            quote! {
+                fn MyBanner(props: MyBannerProps) -> Node {
+                    rsx! {
+                        <div class="my-banner">
+                            <h1>My Banner</h1>
+                        </div>
+                    }
+                }
+            },
+        )?;
+
+        let expected = quote! {
+            fn MyBanner(props: MyBannerProps) -> Node {
+                rsx! {
+                    <div class="my-banner">
+                        <h1>My Banner</h1>
+                    </div>
+                }
+            }
+        };
+
+        assert_tokens_eq(expected, output)
+    }
+
+    fn assert_tokens_eq(expected: TokenStream, output: TokenStream) -> Result<()> {
+        ::pretty_assertions::assert_eq!(expected.to_string(), output.to_string());
+
+        Ok(())
+    }
+}

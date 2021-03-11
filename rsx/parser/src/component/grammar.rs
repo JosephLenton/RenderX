@@ -1,7 +1,7 @@
 use crate::component::ast::Function;
 use crate::component::ast::Generics;
+use crate::component::ast::Params;
 use crate::component::ast::Public;
-use crate::component::ast::WhereClause;
 use crate::component::error::Error;
 use crate::component::error::Result;
 
@@ -9,10 +9,8 @@ use crate::util::TokenIterator;
 
 use ::proc_macro2::token_stream::IntoIter;
 use ::proc_macro2::Delimiter;
-use ::proc_macro2::Group;
 use ::proc_macro2::Ident;
 use ::proc_macro2::TokenStream;
-use ::std::fmt::Write;
 
 const COLON: char = ':';
 const EXCLAMATION_MARK: char = '!';
@@ -29,31 +27,27 @@ pub fn parse(stream: TokenStream) -> Result<Function> {
         return Err(Error::EmptyMacroStreamGiven);
     }
 
-    let mut input = TokenIterator::new(stream);
-    let node = parse_function(&mut input)?;
-
-    if !input.is_empty() {
-        return Err(Error::ExcessNodesFound);
-    }
+    let input = TokenIterator::new(stream);
+    let node = parse_function(input)?;
 
     Ok(node)
 }
 
-fn parse_function(input: &mut TokenIteratorStream) -> Result<Function> {
-    let public = parse_public(input)?;
-    let name = parse_name(input)?;
-    let generics = parse_generics(input)?;
-    let params = parse_params(input)?;
-    let where_clause = parse_where_clause(input)?;
-    let code = parse_code(input)?;
+fn parse_function(mut input: TokenIteratorStream) -> Result<Function> {
+    input.chomp_ident_of("fn")?;
+
+    let public = parse_public(&mut input)?;
+    let name = parse_name(&mut input)?;
+    let generics = parse_generics(&mut input)?;
+    let params = parse_params(&mut input)?;
+    let rest = parse_rest(input)?;
 
     Ok(Function {
         public,
         name,
         generics,
         params,
-        where_clause,
-        code,
+        rest,
     })
 }
 
@@ -69,28 +63,16 @@ fn parse_generics(input: &mut TokenIteratorStream) -> Result<Option<Generics>> {
     Ok(None)
 }
 
-fn parse_params(input: &mut TokenIteratorStream) -> Result<Group> {
-    Ok(input.chomp_group(Delimiter::Parenthesis)?)
+fn parse_params(input: &mut TokenIteratorStream) -> Result<Params> {
+    let tokens = input.chomp_group(Delimiter::Parenthesis)?;
+
+    Ok(Params { tokens })
 }
 
-fn parse_where_clause(input: &mut TokenIteratorStream) -> Result<Option<WhereClause>> {
-    Ok(None)
+fn parse_rest(mut input: TokenIteratorStream) -> Result<TokenStream> {
+    if input.is_empty() {
+        return Err(Error::ExpectRestTokens);
+    }
+
+    Ok(input.to_token_stream())
 }
-
-fn parse_code(input: &mut TokenIteratorStream) -> Result<Group> {
-    Ok(input.chomp_group(Delimiter::Brace)?)
-}
-
-// #[cfg(test)]
-// mod parse {
-//     use super::*;
-//     use ::pretty_assertions::assert_eq;
-//     use ::quote::quote;
-
-//     fn assert_eq_nodes(tokens: TokenStream, expected_function: Function) -> Result<()> {
-//         let nodes = parse(tokens.into())?;
-//         assert_eq!(nodes, expected_nodes);
-
-//         Ok(())
-//     }
-// }

@@ -8,8 +8,6 @@ use crate::util::token_stream_eq;
 use crate::util::MicroVec;
 use crate::util::TokenIterator;
 
-use ::proc_macro2::Delimiter;
-use ::proc_macro2::Group;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Write;

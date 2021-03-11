@@ -1,7 +1,7 @@
 use crate::component::ast::Function;
 use crate::component::ast::Generics;
+use crate::component::ast::Params;
 use crate::component::ast::Public;
-use crate::component::ast::WhereClause;
 
 use ::proc_macro2::TokenStream;
 use ::quote::quote;
@@ -14,12 +14,11 @@ fn visit_function(f: Function) -> TokenStream {
     let public_tokens = visit_public(f.public);
     let name = f.name;
     let generics_tokens = visit_generics(f.generics);
-    let params = f.params;
-    let where_clause_tokens = visit_where_clause(f.where_clause);
-    let code = f.code;
+    let params_tokens = visit_params(f.params);
+    let rest = f.rest;
 
     quote! {
-        #public_tokens #name #generics_tokens #params #where_clause_tokens #code
+        #public_tokens fn #name #generics_tokens #params_tokens #rest
     }
 }
 
@@ -31,6 +30,10 @@ fn visit_generics(maybe_generics: Option<Generics>) -> TokenStream {
     quote! {}
 }
 
-fn visit_where_clause(maybe_where_clause: Option<WhereClause>) -> TokenStream {
-    quote! {}
+fn visit_params(params: Params) -> TokenStream {
+    let params_tokens = params.tokens;
+
+    quote! {
+        #params_tokens
+    }
 }

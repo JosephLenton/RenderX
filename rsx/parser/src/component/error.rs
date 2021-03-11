@@ -8,12 +8,8 @@ pub type Result<N> = ::std::result::Result<N, Error>;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Error {
     AttributeFound,
-    // ExpectedName,
+    ExpectRestTokens,
     EmptyMacroStreamGiven,
-    // UnexpectedStartingInput,
-    ExcessNodesFound,
-    // PeekOnEmptyNode,
-    // MoreTokensExpected,
     UnexpectedToken,
     ChompOnEmptyNode,
     FmtError(fmt::Error),

@@ -6,6 +6,7 @@ use ::proc_macro2::Ident;
 use ::proc_macro2::TokenStream;
 use ::proc_macro2::TokenTree;
 use ::std::fmt::Debug;
+use ::std::iter::FromIterator;
 use ::std::iter::Iterator;
 
 pub enum TokenIteratorError {
@@ -109,6 +110,15 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         Err(TokenIteratorError::UnexpectedToken)
     }
 
+    pub fn chomp_ident_of(&mut self, ident_str: &str) -> Result<Ident> {
+        let ident = self.chomp_ident()?;
+        if ident.to_string() == ident_str {
+            return Ok(ident);
+        }
+
+        Err(TokenIteratorError::UnexpectedToken)
+    }
+
     pub fn chomp_literal(&mut self) -> Result<String> {
         if let Some(TokenTree::Literal(literal)) = self.peek() {
             let mut literal_string = literal.to_string();
@@ -174,6 +184,10 @@ impl<I: Iterator<Item = TokenTree> + Clone + Debug> TokenIterator<I> {
         }
 
         Err(TokenIteratorError::UnexpectedToken)
+    }
+
+    pub fn to_token_stream(self) -> TokenStream {
+        TokenStream::from_iter(self.iter)
     }
 }
 
