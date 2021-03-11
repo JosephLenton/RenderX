@@ -18,6 +18,7 @@ fn visit_function(f: Function) -> TokenStream {
     let rest = f.rest;
 
     quote! {
+        #![allow(non_snake_case)]
         #public_tokens fn #name #generics_tokens #params_tokens #rest
     }
 }

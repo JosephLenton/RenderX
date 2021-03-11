@@ -38,6 +38,7 @@ mod parse {
         )?;
 
         let expected = quote! {
+            #![allow(non_snake_case)]
             fn MyBanner(props: MyBannerProps) -> Node {
                 rsx! {
                     <div class="my-banner">
