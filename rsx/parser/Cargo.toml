@@ -9,6 +9,7 @@ publish = false
 proc-macro2 = "1.0.24"
 quote = "1.0.9"
 lookahead = "0.1.0"
+syn = { version = "1.0.63", features = ["derive", "printing", "parsing", "full", "extra-traits"] }
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"

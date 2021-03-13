@@ -27,7 +27,7 @@ mod parse {
         let output = parse(
             quote! {},
             quote! {
-                fn MyBanner(props: MyBannerProps) -> Node {
+                pub fn MyBanner(my_props: MyBannerProps) -> Node {
                     rsx! {
                         <div class="my-banner">
                             <h1>My Banner</h1>
@@ -39,11 +39,16 @@ mod parse {
 
         let expected = quote! {
             #![allow(non_snake_case)]
-            fn MyBanner(props: MyBannerProps) -> Node {
-                rsx! {
-                    <div class="my-banner">
-                        <h1>My Banner</h1>
-                    </div>
+            pub struct MyBanner;
+
+            impl FnOnce<(MyBannerProps,)> for MyBanner {
+                type Output = Node;
+                extern "rust-call" fn call_once(self, (my_props,): (MyBannerProps,)) -> Node {
+                    rsx! {
+                        <div class="my-banner">
+                            <h1>My Banner</h1>
+                        </div>
+                    }
                 }
             }
         };

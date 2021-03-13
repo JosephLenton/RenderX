@@ -41,7 +41,7 @@ fn parse_root(stream: TokenStream) -> Result<Node> {
     let node = parse_root_node(&mut input)?;
 
     if !input.is_empty() {
-        return Err(Error::ExcessNodesFound);
+        return Err(Error::ExcessTokensFound);
     }
 
     Ok(node)

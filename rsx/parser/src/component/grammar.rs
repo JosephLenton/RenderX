@@ -1,78 +1,70 @@
 use crate::component::ast::Function;
-use crate::component::ast::Generics;
-use crate::component::ast::Params;
-use crate::component::ast::Public;
+use crate::component::ast::Props;
 use crate::component::error::Error;
 use crate::component::error::Result;
 
-use crate::util::TokenIterator;
-
-use ::proc_macro2::token_stream::IntoIter;
-use ::proc_macro2::Delimiter;
-use ::proc_macro2::Ident;
 use ::proc_macro2::TokenStream;
 
-const COLON: char = ':';
-const EXCLAMATION_MARK: char = '!';
-const HYPHEN: char = '-';
-const LEFT_ANGLE: char = '<';
-const RIGHT_ANGLE: char = '>';
-const FORWARD_SLASH: char = '/';
-const EQUALS: char = '=';
+use ::syn::parse2;
+use ::syn::FnArg;
+use ::syn::ItemFn;
+use ::syn::ReturnType;
 
-type TokenIteratorStream = TokenIterator<IntoIter>;
+use ::syn::punctuated::Pair;
+use ::syn::punctuated::Punctuated;
+use ::syn::token::Comma;
 
 pub fn parse(stream: TokenStream) -> Result<Function> {
     if stream.is_empty() {
         return Err(Error::EmptyMacroStreamGiven);
     }
 
-    let input = TokenIterator::new(stream);
-    let node = parse_function(input)?;
+    let f = parse2::<ItemFn>(stream)?;
+    let signature = f.sig;
 
-    Ok(node)
-}
-
-fn parse_function(mut input: TokenIteratorStream) -> Result<Function> {
-    input.chomp_ident_of("fn")?;
-
-    let public = parse_public(&mut input)?;
-    let name = parse_name(&mut input)?;
-    let generics = parse_generics(&mut input)?;
-    let params = parse_params(&mut input)?;
-    let rest = parse_rest(input)?;
+    let return_type = match signature.output {
+        ReturnType::Default => {
+            return Err(Error::NoReturnType);
+        }
+        ReturnType::Type(_, r_type) => r_type,
+    };
 
     Ok(Function {
-        public,
-        name,
-        generics,
-        params,
-        rest,
+        visibility: f.vis,
+        constness: signature.constness,
+        asyncness: signature.asyncness,
+        unsafety: signature.unsafety,
+        name: signature.ident,
+        props: parse_props(signature.inputs)?,
+        return_type,
+        code: f.block,
     })
 }
 
-fn parse_public(input: &mut TokenIteratorStream) -> Result<Option<Public>> {
-    Ok(None)
-}
-
-fn parse_name(input: &mut TokenIteratorStream) -> Result<Ident> {
-    Ok(input.chomp_ident()?)
-}
-
-fn parse_generics(input: &mut TokenIteratorStream) -> Result<Option<Generics>> {
-    Ok(None)
-}
-
-fn parse_params(input: &mut TokenIteratorStream) -> Result<Params> {
-    let tokens = input.chomp_group(Delimiter::Parenthesis)?;
-
-    Ok(Params { tokens })
-}
-
-fn parse_rest(mut input: TokenIteratorStream) -> Result<TokenStream> {
+fn parse_props(mut input: Punctuated<FnArg, Comma>) -> Result<Option<Props>> {
     if input.is_empty() {
-        return Err(Error::ExpectRestTokens);
+        return Ok(None);
     }
 
-    Ok(input.to_token_stream())
+    if input.len() > 1 {
+        return Err(Error::ExtraParametersFound);
+    }
+
+    let fn_arg = match input.pop() {
+        Some(Pair::End(fn_arg)) => fn_arg,
+        _ => {
+            return Err(Error::InternalPropsArgParsingMismatchError);
+        }
+    };
+
+    match fn_arg {
+        FnArg::Receiver(_) => {
+            return Err(Error::SelfArgUnsupported);
+        }
+        FnArg::Typed(pat_type) => Ok(Some(Props {
+            attributes: pat_type.attrs,
+            pattern: pat_type.pat,
+            item_type: pat_type.ty,
+        })),
+    }
 }

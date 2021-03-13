@@ -1,29 +1,28 @@
-use ::proc_macro2::Group;
-use ::proc_macro2::Ident;
-use ::proc_macro2::TokenStream;
+use ::syn::token::Async;
+use ::syn::token::Const;
+use ::syn::token::Unsafe;
+use ::syn::Attribute;
+use ::syn::Block;
+use ::syn::Ident;
+use ::syn::Pat;
+use ::syn::Type;
+use ::syn::Visibility;
 
 #[derive(Clone, Debug)]
 pub struct Function {
-    pub public: Option<Public>,
+    pub visibility: Visibility,
+    pub constness: Option<Const>,
+    pub asyncness: Option<Async>,
+    pub unsafety: Option<Unsafe>,
     pub name: Ident,
-    pub generics: Option<Generics>,
-    pub params: Params,
-    pub rest: TokenStream,
+    pub return_type: Box<Type>,
+    pub props: Option<Props>,
+    pub code: Box<Block>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Public {}
-
-#[derive(Clone, Debug)]
-pub struct Generics {}
-
-#[derive(Clone, Debug)]
-pub struct Params {
-    pub tokens: Group,
+pub struct Props {
+    pub attributes: Vec<Attribute>,
+    pub pattern: Box<Pat>,
+    pub item_type: Box<Type>,
 }
-
-// impl PartialEq for Attribute {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.key == other.key && self.value == other.value
-//     }
-// }

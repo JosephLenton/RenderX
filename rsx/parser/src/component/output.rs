@@ -1,7 +1,5 @@
 use crate::component::ast::Function;
-use crate::component::ast::Generics;
-use crate::component::ast::Params;
-use crate::component::ast::Public;
+use crate::component::ast::Props;
 
 use ::proc_macro2::TokenStream;
 use ::quote::quote;
@@ -11,30 +9,51 @@ pub fn build(ast: Function) -> TokenStream {
 }
 
 fn visit_function(f: Function) -> TokenStream {
-    let public_tokens = visit_public(f.public);
+    let visibility = f.visibility;
+    let constness = f.constness;
+    let asyncness = f.asyncness;
+    let unsafety = f.unsafety;
     let name = f.name;
-    let generics_tokens = visit_generics(f.generics);
-    let params_tokens = visit_params(f.params);
-    let rest = f.rest;
+    let return_type = f.return_type;
+    let code = f.code;
+
+    let (args_patterns_tokens, args_types_tokens) = visit_props(f.props);
 
     quote! {
         #![allow(non_snake_case)]
-        #public_tokens fn #name #generics_tokens #params_tokens #rest
+        #visibility struct #name;
+
+        impl FnOnce<#args_types_tokens> for #name
+        {
+            type Output = #return_type;
+            #constness #asyncness #unsafety extern "rust-call" fn call_once(self, #args_patterns_tokens: #args_types_tokens) -> #return_type
+                #code
+        }
     }
 }
 
-fn visit_public(maybe_public: Option<Public>) -> TokenStream {
-    quote! {}
-}
+fn visit_props(maybe_props: Option<Props>) -> (TokenStream, TokenStream) {
+    match maybe_props {
+        None => (
+            quote! {
+                (,)
+            },
+            quote! {
+                (,)
+            },
+        ),
+        Some(props) => {
+            let name = props.pattern;
+            let item_type = props.item_type;
 
-fn visit_generics(maybe_generics: Option<Generics>) -> TokenStream {
-    quote! {}
-}
-
-fn visit_params(params: Params) -> TokenStream {
-    let params_tokens = params.tokens;
-
-    quote! {
-        #params_tokens
+            (
+                quote! {
+                    (#name,)
+                },
+                quote! {
+                    (#item_type,)
+                },
+            )
+        }
     }
 }

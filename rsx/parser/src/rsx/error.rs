@@ -13,7 +13,7 @@ pub enum Error {
     EmptyMacroStreamGiven,
     UnexpectedStartingInput,
     UnexpectedToken,
-    ExcessNodesFound,
+    ExcessTokensFound,
     PeekOnEmptyNode,
     MoreTokensExpected,
     ChompOnEmptyNode,
