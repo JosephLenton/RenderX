@@ -2,6 +2,7 @@ use crate::rsx::ast::Attribute;
 use crate::rsx::ast::Node;
 use crate::rsx::ast::Value;
 
+use ::proc_macro2::Ident;
 use ::proc_macro2::TokenStream;
 use ::quote::format_ident;
 use ::quote::quote;
@@ -68,11 +69,12 @@ fn visit_node(node: Node) -> TokenStream {
             }
         }
         Node::SelfClosingComponent { name, attributes } => {
-            // let attribute_tokens = visit_optional_attributes(attributes);
             let ident = format_ident!("{}", name);
+            let props_tokens = visit_optional_props(&ident, attributes);
 
             quote! {
                 #ident(
+                    #props_tokens
                 )
             }
         }
@@ -124,8 +126,7 @@ fn visit_optional_attributes(maybe_attributes: Option<Vec<Attribute>>) -> TokenS
 }
 
 fn visit_attributes(attributes: Vec<Attribute>) -> TokenStream {
-    let attribute_tokens: Vec<TokenStream> =
-        attributes.into_iter().map(|a| visit_attribute(a)).collect();
+    let attribute_tokens = attributes.into_iter().map(|a| visit_attribute(a));
 
     quote! {
         vec![
@@ -164,6 +165,68 @@ fn visit_attribute_value(value: Option<Value>) -> TokenStream {
         },
         Some(Value::Code(code)) => quote! {
             ::renderx::dom::ToAttributeValue::to_attribute_value(#code)
+        },
+    }
+}
+
+fn visit_optional_props(
+    component_ident: &Ident,
+    maybe_props: Option<Vec<Attribute>>,
+) -> TokenStream {
+    match maybe_props {
+        None => quote! {},
+        Some(props) => visit_props(component_ident, props),
+    }
+}
+
+fn visit_props(component_ident: &Ident, props: Vec<Attribute>) -> TokenStream {
+    let props_type_name = format_ident!("__RSX__{}__Props__", component_ident);
+    let props_tokens = props.into_iter().map(|a| visit_prop(a));
+
+    quote! {
+        {
+            type #props_type_name = <#component_ident as ::renderx::Component>::Props;
+            #props_type_name {
+                #(#props_tokens),*
+            }
+        }
+    }
+}
+
+fn visit_prop(prop: Attribute) -> TokenStream {
+    let key = visit_prop_key(prop.key);
+    let value = visit_prop_value(prop.value);
+
+    quote! {
+        #key : #value
+    }
+}
+
+fn visit_prop_key(key: Value) -> TokenStream {
+    match key {
+        Value::Text(text) => {
+            let ident = format_ident!("{}", text);
+
+            quote! {
+                #ident
+            }
+        }
+        Value::Code(code) => {
+            unimplemented!()
+        }
+    }
+}
+
+fn visit_prop_value(value: Option<Value>) -> TokenStream {
+    match value {
+        None => quote! {
+            true
+        },
+        Some(Value::Text(text)) => quote! {
+            #text
+        },
+        Some(Value::Code(code)) => quote! {
+            #code
         },
     }
 }

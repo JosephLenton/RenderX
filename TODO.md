@@ -16,6 +16,8 @@
   - Using code as a child. i.e. the `{nodes}` in `<div>{nodes}</div>`
 
   * Attributes
+    * Remove being able to use code for keys, as it doesn't work with Props to components.
+    * Add support for any identifier key names. i.e. Props { r"my-key": 35 }
     - Values, i.e. the `value` in `<div key="value" />`
     - Add support for non-strings. i.e. `<input type="text" min={5} max={10} />`
     - Code for attributes, i.e. `<div key={some_variable} />`

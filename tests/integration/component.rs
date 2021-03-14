@@ -5,19 +5,42 @@ use ::renderx::dom::Node;
 use ::renderx::render::render;
 use ::renderx::rsx;
 
-#[component]
-fn HorizontalRule() -> Node {
-    rsx! {
-        <hr class="horizontal-rule"/>
+#[test]
+fn it_should_render_self_closing_components_with_no_props() -> Result<(), std::fmt::Error> {
+    #[component]
+    fn HorizontalRule() -> Node {
+        rsx! {
+            <hr class="horizontal-rule"/>
+        }
     }
+
+    let html = render(rsx! {
+        <HorizontalRule />
+    })?;
+
+    assert_eq!(html, "<hr class=\"horizontal-rule\"/>");
+
+    Ok(())
 }
 
 #[test]
-fn it_should_render_example_front_page() {
-    let html = render(rsx! {
-        <h1>"Hello!"</h1>
-        <HorizontalRule />
-    });
+fn it_should_render_self_closing_components_with_props() -> Result<(), std::fmt::Error> {
+    struct HorizontalRuleProps {
+        class: &'static str,
+    }
 
-    assert_eq!(html, "<h1>Hello!</h1><hr class=\"horizontal-rule\"/>")
+    #[component]
+    fn HorizontalRule(props: HorizontalRuleProps) -> Node {
+        rsx! {
+            <hr class={props.class} />
+        }
+    }
+
+    let html = render(rsx! {
+        <HorizontalRule class="my-horizontal-rule" />
+    })?;
+
+    assert_eq!(html, "<hr class=\"my-horizontal-rule\"/>");
+
+    Ok(())
 }

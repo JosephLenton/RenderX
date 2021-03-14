@@ -21,7 +21,10 @@ pub fn component(attr: TokenStream, stream: TokenStream) -> TokenStream {
 fn display_rsx_error(err: rsx::Error) -> TokenStream {
     match err {
         rsx::Error::MismatchedClosingTagCode => {
-            panic!("Mismatched closing code, note you can use `</{}>` for simplicity.")
+            panic!(
+                "{}",
+                "Mismatched closing code, note you can use `</{}>` for simplicity."
+            )
         }
         rsx::Error::MismatchedClosingTagName => panic!("Open and closing tag names don't match"),
         rsx::Error::ExpectedName => {

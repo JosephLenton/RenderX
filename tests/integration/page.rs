@@ -4,7 +4,7 @@ use ::pretty_assertions::assert_eq;
 use ::renderx::rsx;
 
 #[test]
-fn it_should_render_example_front_page() {
+fn it_should_render_example_front_page() -> Result<(), std::fmt::Error> {
     const COPY_TITE: &'static str = "Example Page";
     const COPYRIGHT: &'static str = "Copyright Big Inc 2021";
 
@@ -36,7 +36,9 @@ fn it_should_render_example_front_page() {
               </footer>
             </body>
           </html>
-        });
+        })?;
 
     assert_eq!("<!doctype html><html lang=\"en\"><head><title>Example Page</title><!-- \n  yo yo yo, get in touch if you fancy a job!\n  I got lots of roles available.\n  Like baking, and stuff.\n --></head><body><header><h1>Example Page</h1></header><article></article><footer><p class=\"p p--small\">Copyright Big Inc 2021</p></footer></body></html>", html);
+
+    Ok(())
 }

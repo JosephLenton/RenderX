@@ -4,16 +4,17 @@ use crate::dom::Child;
 use crate::dom::Node;
 use ::std::convert::AsRef;
 use ::std::convert::Into;
-use ::std::fmt::Result;
 use ::std::fmt::Write;
 
-pub fn render<N>(node: N) -> String
+type Result<T = ()> = ::std::result::Result<T, ::std::fmt::Error>;
+
+pub fn render<N>(node: N) -> Result<String>
 where
     N: AsRef<Node>,
 {
     let mut render = Render::new();
-    render.render(node.as_ref());
-    render.into()
+    render.render(node.as_ref())?;
+    Ok(render.into())
 }
 
 #[derive(Clone, Debug)]
