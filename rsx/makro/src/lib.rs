@@ -30,7 +30,7 @@ fn display_rsx_error(err: rsx::Error) -> TokenStream {
         rsx::Error::EmptyMacroStreamGiven => panic!("Empty rsx given"),
         rsx::Error::UnexpectedStartingInput => panic!("HTML doesn't start with a node"),
         rsx::Error::UnexpectedToken => panic!("Unexpect token"),
-        rsx::Error::ExcessNodesFound => panic!("Excess html found after the initial html"),
+        rsx::Error::ExcessTokensFound => panic!("Excess html found after the initial html"),
         rsx::Error::MoreTokensExpected => {
             panic!("Expected more tokens; could be missing a closing tag?")
         }
@@ -52,25 +52,12 @@ fn display_component_error(err: component::Error) -> TokenStream {
         component::Error::AttributeFound => panic!(
             "Component macro does not support any attributes; use `#[component]` on it's own."
         ),
-        // component::Error::ExpectedName => {
-        //     panic!("Internal error; expected parsing a name (this should never be visible)")
-        // }
         component::Error::EmptyMacroStreamGiven => panic!("Empty rsx given"),
-        // component::Error::UnexpectedStartingInput => panic!("HTML doesn't start with a node"),
-        component::Error::ExcessNodesFound => panic!("Excess html found after the initial html"),
-        // component::Error::MoreTokensExpected => {
-        //     panic!("Expected more tokens; could be missing a closing tag?")
-        // }
-        // component::Error::PeekOnEmptyNode => {
-        //     panic!("Internal error; peeked on an empty node (this should never be visible)")
-        // }
-        component::Error::UnexpectedToken => panic!("Unexpect token"),
-        component::Error::ChompOnEmptyNode => {
-            panic!("Internal error; chomped on an empty node (this should never be visible)")
+        component::Error::NoReturnType => panic!("Component is missing return type (i.e. `Node`)"),
+        component::Error::ExtraParametersFound => {
+            panic!("Components only support one parameter which carries all props")
         }
-        component::Error::FmtError(fmt) => panic!(
-            "Internal error; failed writing to string (this should never be visible), {}",
-            fmt
-        ),
+        component::Error::SelfArgUnsupported => panic!("`self` parameters are not supported"),
+        component::Error::SynError(err) => panic!("Error parsing component, {}", err),
     }
 }

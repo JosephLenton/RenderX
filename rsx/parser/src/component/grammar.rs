@@ -53,7 +53,7 @@ fn parse_props(mut input: Punctuated<FnArg, Comma>) -> Result<Option<Props>> {
     let fn_arg = match input.pop() {
         Some(Pair::End(fn_arg)) => fn_arg,
         _ => {
-            return Err(Error::InternalPropsArgParsingMismatchError);
+            unreachable!("Seen multiple parameters, when there should only be one at this time (this is a bug).")
         }
     };
 

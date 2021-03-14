@@ -2,7 +2,6 @@ use crate::dom::Attribute;
 use crate::dom::Child;
 use crate::dom::ToChild;
 use ::std::convert::AsRef;
-use ::std::convert::Into;
 
 /// The contents of the Node are all doc-hidden.
 /// This is because the Node structure may change in future releases.

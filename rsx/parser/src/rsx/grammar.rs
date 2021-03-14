@@ -148,14 +148,26 @@ fn parse_node_tag(input: &mut TokenIteratorVec) -> Result<Node> {
     // Real tags from here on. i.e. <div></div> and <hr />
     let opening_tag_name = parse_name(input)?;
     let attributes = parse_attributes(input)?;
+    let is_component = is_component_name(&opening_tag_name);
 
     if input.is_next_punct(FORWARD_SLASH) {
         input.chomp_puncts(&[FORWARD_SLASH, RIGHT_ANGLE])?;
 
-        return Ok(Node::SelfClosing {
-            name: opening_tag_name,
-            attributes,
-        });
+        if is_component {
+            if let Value::Text(opening_tag_name_string) = opening_tag_name {
+                return Ok(Node::SelfClosingComponent {
+                    name: opening_tag_name_string,
+                    attributes,
+                });
+            } else {
+                unreachable!("Component name was not parsed as `Value::Text` (this is a bug)");
+            }
+        } else {
+            return Ok(Node::SelfClosing {
+                name: opening_tag_name,
+                attributes,
+            });
+        }
     }
 
     input.chomp_punct(RIGHT_ANGLE)?;
@@ -185,11 +197,23 @@ fn parse_node_tag(input: &mut TokenIteratorVec) -> Result<Node> {
         }
     }
 
-    Ok(Node::Open {
-        name: opening_tag_name,
-        attributes,
-        children,
-    })
+    if is_component {
+        if let Value::Text(opening_tag_name_string) = opening_tag_name {
+            Ok(Node::OpenComponent {
+                name: opening_tag_name_string,
+                attributes,
+                children,
+            })
+        } else {
+            unreachable!("Component name was not parsed as `Value::Text` (this is a bug)");
+        }
+    } else {
+        Ok(Node::Open {
+            name: opening_tag_name,
+            attributes,
+            children,
+        })
+    }
 }
 
 fn parse_node_text(input: &mut TokenIteratorVec) -> Result<Node> {
@@ -379,6 +403,38 @@ fn char_spacing_rules(c: char) -> (bool, bool) {
         '<' => (true, false),
         '-' => (false, false),
         _ => (true, true),
+    }
+}
+
+fn is_component_name(opening_tag_name: &Value) -> bool {
+    match opening_tag_name {
+        Value::Code(_) => {
+            return false;
+        }
+        Value::Text(name) => {
+            let mut chars = name.chars();
+
+            // Starts with an uppercase character.
+            match chars.next() {
+                None => {
+                    return false;
+                }
+                Some(c) => {
+                    if !c.is_ascii_uppercase() {
+                        return false;
+                    }
+                }
+            }
+
+            // The rest matches Rust identifier rules.
+            for c in chars {
+                if !c.is_alphanumeric() && c != '_' {
+                    return false;
+                }
+            }
+
+            true
+        }
     }
 }
 

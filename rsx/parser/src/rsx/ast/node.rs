@@ -27,6 +27,15 @@ pub enum Node {
         attributes: Option<Vec<Attribute>>,
         children: Option<Vec<Node>>,
     },
+    SelfClosingComponent {
+        name: String,
+        attributes: Option<Vec<Attribute>>,
+    },
+    OpenComponent {
+        name: String,
+        attributes: Option<Vec<Attribute>>,
+        children: Option<Vec<Node>>,
+    },
     Text(String),
     Code(TokenStream),
 }
@@ -83,6 +92,32 @@ impl PartialEq for Node {
                     children: left_children,
                 },
                 Node::Open {
+                    name: right_name,
+                    attributes: right_attributes,
+                    children: right_children,
+                },
+            ) => {
+                left_name == right_name
+                    && left_attributes == right_attributes
+                    && left_children == right_children
+            }
+            (
+                Node::SelfClosingComponent {
+                    name: left_name,
+                    attributes: left_attributes,
+                },
+                Node::SelfClosingComponent {
+                    name: right_name,
+                    attributes: right_attributes,
+                },
+            ) => left_name == right_name && left_attributes == right_attributes,
+            (
+                Node::OpenComponent {
+                    name: left_name,
+                    attributes: left_attributes,
+                    children: left_children,
+                },
+                Node::OpenComponent {
                     name: right_name,
                     attributes: right_attributes,
                     children: right_children,

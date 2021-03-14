@@ -3,6 +3,7 @@ use crate::rsx::ast::Node;
 use crate::rsx::ast::Value;
 
 use ::proc_macro2::TokenStream;
+use ::quote::format_ident;
 use ::quote::quote;
 
 pub fn build(ast: Node) -> TokenStream {
@@ -65,6 +66,23 @@ fn visit_node(node: Node) -> TokenStream {
             quote! {
                 ::renderx::dom::Node::new_open(#name_tokens, #attribute_tokens, #children_tokens)
             }
+        }
+        Node::SelfClosingComponent { name, attributes } => {
+            // let attribute_tokens = visit_optional_attributes(attributes);
+            let ident = format_ident!("{}", name);
+
+            quote! {
+                #ident(
+                )
+            }
+        }
+        Node::OpenComponent {
+            name,
+            attributes,
+            children,
+        } => {
+            unimplemented!();
+            quote! {}
         }
         Node::Text(text) => {
             quote! {

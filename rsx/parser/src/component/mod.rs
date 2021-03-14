@@ -23,7 +23,41 @@ mod parse {
     use ::quote::quote;
 
     #[test]
-    fn it_should_output_component_markup() -> Result<()> {
+    fn it_should_output_component_markup_without_props() -> Result<()> {
+        let output = parse(
+            quote! {},
+            quote! {
+                pub fn HorizontalRule() -> Node {
+                    rsx! {
+                        <hr class="horizontal-rule" />
+                    }
+                }
+            },
+        )?;
+
+        let expected = quote! {
+            #![allow(non_snake_case)]
+            pub struct HorizontalRule;
+
+            impl FnOnce<()> for HorizontalRule {
+                type Output = Node;
+                extern "rust-call" fn call_once(self, _: ()) -> Node {
+                    rsx! {
+                        <hr class="horizontal-rule" />
+                    }
+                }
+            }
+
+            impl ::renderx::core::component::Component for HorizontalRule {
+                type Props = ();
+            }
+        };
+
+        assert_tokens_eq(expected, output)
+    }
+
+    #[test]
+    fn it_should_output_component_markup_with_props() -> Result<()> {
         let output = parse(
             quote! {},
             quote! {
@@ -50,6 +84,10 @@ mod parse {
                         </div>
                     }
                 }
+            }
+
+            impl ::renderx::core::component::Component for MyBanner {
+                type Props = MyBannerProps;
             }
         };
 
