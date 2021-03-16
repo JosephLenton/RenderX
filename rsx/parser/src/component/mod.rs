@@ -36,7 +36,7 @@ mod parse {
         )?;
 
         let expected = quote! {
-            #![allow(non_snake_case)]
+            #[allow(non_snake_case)]
             pub struct HorizontalRule;
 
             impl FnOnce<()> for HorizontalRule {
@@ -48,7 +48,7 @@ mod parse {
                 }
             }
 
-            impl ::renderx::core::component::Component for HorizontalRule {
+            impl ::renderx::Component for HorizontalRule {
                 type Props = ();
             }
         };
@@ -72,7 +72,7 @@ mod parse {
         )?;
 
         let expected = quote! {
-            #![allow(non_snake_case)]
+            #[allow(non_snake_case)]
             pub struct MyBanner;
 
             impl FnOnce<(MyBannerProps,)> for MyBanner {
@@ -86,7 +86,7 @@ mod parse {
                 }
             }
 
-            impl ::renderx::core::component::Component for MyBanner {
+            impl ::renderx::Component for MyBanner {
                 type Props = MyBannerProps;
             }
         };
