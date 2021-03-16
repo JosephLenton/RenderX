@@ -83,8 +83,14 @@ fn visit_node(node: Node) -> TokenStream {
             attributes,
             children,
         } => {
-            unimplemented!();
-            quote! {}
+            let ident = format_ident!("{}", name);
+            let props_tokens = visit_optional_props(&ident, attributes);
+
+            quote! {
+                #ident(
+                    #props_tokens
+                )
+            }
         }
         Node::Text(text) => {
             quote! {
@@ -181,28 +187,45 @@ fn visit_optional_props(
 
 fn visit_props(component_ident: &Ident, props: Vec<Attribute>) -> TokenStream {
     let props_type_name = format_ident!("__RSX__{}__Props__", component_ident);
-    let props_tokens = props.into_iter().map(|a| visit_prop(a));
+    let props_tokens = props.iter().map(|a| visit_prop(a));
+    let props_assignment_tokens = props.iter().map(|a| visit_prop_assignment(a));
 
     quote! {
         {
             type #props_type_name = <#component_ident as ::renderx::Component>::Props;
-            #props_type_name {
-                #(#props_tokens),*
-            }
+            ::renderx::DefaultDetector::<#props_type_name>::maybe_default()
+                .map(|__rsx_comp_props__| {
+                    // #(#props_assignment_tokens);*
+                    __rsx_comp_props__
+                })
+                .unwrap_or_else(|| {
+                    #props_type_name {
+                        #(#props_tokens),*
+                    }
+                })
         }
     }
 }
 
-fn visit_prop(prop: Attribute) -> TokenStream {
-    let key = visit_prop_key(prop.key);
-    let value = visit_prop_value(prop.value);
+fn visit_prop(prop: &Attribute) -> TokenStream {
+    let key = visit_prop_key(&prop.key);
+    let value = visit_prop_value(&prop.value);
 
     quote! {
         #key : #value
     }
 }
 
-fn visit_prop_key(key: Value) -> TokenStream {
+fn visit_prop_assignment(prop: &Attribute) -> TokenStream {
+    let key = visit_prop_key(&prop.key);
+    let value = visit_prop_value(&prop.value);
+
+    quote! {
+        __rsx_comp_props__.#key = #value
+    }
+}
+
+fn visit_prop_key(key: &Value) -> TokenStream {
     match key {
         Value::Text(text) => {
             let ident = format_ident!("{}", text);
@@ -217,7 +240,7 @@ fn visit_prop_key(key: Value) -> TokenStream {
     }
 }
 
-fn visit_prop_value(value: Option<Value>) -> TokenStream {
+fn visit_prop_value(value: &Option<Value>) -> TokenStream {
     match value {
         None => quote! {
             true
