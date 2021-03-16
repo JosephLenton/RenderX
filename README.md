@@ -119,10 +119,33 @@ pub fn Button(maybe_href:Option<&'static str>) {
 
 ### Optional props, that you don't have to pass.
 
+### Supports default props
+
+```
+pub struct ButtonProps {
+  disabled: Option<bool>,
+}
+
+#[Component]
+pub fn Button(props: ButtonProps) -> Node {
+  rsx! {
+    <button class={classname("button").maybe_attr("disabled", props.disabled)} disabled={props.disabled}>
+      {props.children}
+    </button>
+  }
+}
+
+pub fn page() -> Node {
+  rsx! {
+    <Button>Click Me</Button>
+    <Button disabled>Click Me</Button>
+  }
+}
+```
+
 ### Implicitely passing bool
 
 ```
-#[Props]
 pub struct ButtonProps {
   disabled: bool,
 }

@@ -5,6 +5,15 @@
   * Components
     * Component functions
     * Props
+      * Add a means to automatically turn values into options
+        * i.e. `struct ButtonProps { disabled: Option<bool> }` and then `<Button disabled={true} />`
+      * Using `TryDefault` we can add offer default props.
+        * i.e. `<CompProps>::try_default().and(|d| CompProps {
+          some_prop: true,
+          ...d
+        }).unwrap_or_else(|| CompProps {
+          some_prop: true,
+        })`
 
   * Client Side Updates
     * Spike; create a crate that replicates the SPA update idea, and does a performance check.
