@@ -44,3 +44,25 @@ fn it_should_render_self_closing_components_with_props() -> Result<(), std::fmt:
 
     Ok(())
 }
+
+#[test]
+fn it_should_render_open_component_with_props() -> Result<(), std::fmt::Error> {
+    struct SectionProps {
+        class: &'static str,
+    }
+
+    #[component]
+    fn Section(props: SectionProps) -> Node {
+        rsx! {
+            <section class={props.class}></section>
+        }
+    }
+
+    let html = render(rsx! {
+        <Section class="my-section"></Section>
+    })?;
+
+    assert_eq!(html, "<section class=\"my-section\"></section>");
+
+    Ok(())
+}

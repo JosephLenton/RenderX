@@ -83,8 +83,14 @@ fn visit_node(node: Node) -> TokenStream {
             attributes,
             children,
         } => {
-            unimplemented!();
-            quote! {}
+            let ident = format_ident!("{}", name);
+            let props_tokens = visit_optional_props(&ident, attributes);
+
+            quote! {
+                #ident(
+                    #props_tokens
+                )
+            }
         }
         Node::Text(text) => {
             quote! {
